@@ -1,6 +1,7 @@
 # Semi- Supervised GANs for Data Efficient Classification - Weekly Updates
 
 **Team:** Poorva Rane, Goutam Nair, Anushree Prasanna Kumar
+
 **Project Description:** We are working on using GANs to generate images of tissues and cells. We then leverage the learned representations and extend the discriminator to classify the tissue as cancerous and non-cancerous.
 
 This document contains the weekly updates on our Capstone project.
