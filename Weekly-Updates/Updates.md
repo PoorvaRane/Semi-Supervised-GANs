@@ -7,7 +7,7 @@ This document contains the weekly updates on our Capstone project.
 
 ## Weekly Updates
 
-## Sep 5, 2018 - Sep 12, 2018 (09/05 - 09/12)
+### Sep 5, 2018 - Sep 12, 2018 (09/05 - 09/12)
 All:
 * Read papers on the variants of GANs in order to understand their implementation details.
 * Did a literature survey on exisitng techniques used for tissue classification. 
