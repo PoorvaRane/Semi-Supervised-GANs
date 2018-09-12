@@ -10,6 +10,6 @@
 
 Member | Tasks 
 ------ | ---------------
-Goutam | Read papers on the variants of GANs in order to understand their implementation details.
-Poorva | Did a literature survey on exisitng techniques used for tissue classification. 
-Anushree | Explored publicly available annotated datasets for the project (<https://cancergenome.nih.gov/>).
+Goutam | Read papers on the variants of GANs in order to understand their implementation details. Further performed literature survey on state of the art on semi-supervised learning with GANs and CycleGANs
+Poorva | Did a literature survey on exisitng techniques used for tissue classification. Analyzed and identified various distance metrics that can be used between the generated and trained probability distributions for the task. Performed literature survey on GAN architectures and improved techniques for training GANs
+Anushree | Explored publicly available annotated datasets for the project (<https://cancergenome.nih.gov/>). Performed literature survey on DCGANS, state of the art on semi-supervised learning with GANs and work on Progressive growing of GANs to generate high resolution images.
