@@ -6,6 +6,14 @@
 
 ## Weekly Updates
 
+### Sep 12, 2018 - Sep 19, 2018 (09/12 - 09/19)
+Member | Tasks 
+------ | ---------------
+Goutam | Explore how condiational GANs can be leveraged for problem statement. Implement a simple CycleGAN in PyTroch on the dataset being used in the CycleGAN paper (maps dataset). Evaluate if using the least squares GAN improves performance.
+Poorva | Perform literature survey on the various applications of semi-supervised GANs. Implement a minial Semi-supervised GAN and get it running on the MNIST dataset. Evaluate the performance of the GAN and implement different distance metrics on the GAN.
+Anushree | Go through the approaches mentioned in the Camelyon17 Challenge and their basic implementations. Implement progressive growing og GANs for improved image quality generation and explore different multiclass classification techniques using GANs.
+
+
 ### Sep 5, 2018 - Sep 12, 2018 (09/05 - 09/12)
 
 Member | Tasks 
