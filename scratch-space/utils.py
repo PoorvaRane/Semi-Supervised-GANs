@@ -104,11 +104,10 @@ class Logger:
         if isinstance(d_pred_fake, torch.autograd.Variable):
             d_pred_fake = d_pred_fake.data
         
-        
         print('Epoch: [{}/{}], Batch Num: [{}/{}]'.format(
             epoch,num_epochs, n_batch, num_batches)
              )
-        print('Discriminator Loss: {:.4f}, Generator Loss: {:.4f}'.format(d_error, g_error))
+        print('Discriminator Loss: {:.4f}, Generator Loss: {:.4f}'.format(float(d_error), float(g_error)))
         print('D(x): {:.4f}, D(G(z)): {:.4f}'.format(d_pred_real.mean(), d_pred_fake.mean()))
 
     def save_models(self, generator, discriminator, epoch):

@@ -1,3 +1,5 @@
 .ipynb_checkpoints/
 torch_data/
 *.pyc
+runs/
+data/
