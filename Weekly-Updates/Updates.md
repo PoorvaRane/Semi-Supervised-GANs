@@ -6,6 +6,15 @@
 
 ## Weekly Updates
 
+### Sep 19, 2018 - Sep 26, 2018 (09/26 - 10/03)
+Member | Tasks
+------ | ---------------
+Goutam | From our discussion with our mentor at PathAI, we need to work to obtain the accuracy of real and fake generated images and the accuracy of the classification of images on MNIST data with the Semi-supervised GAN. Also obtain metricto get the percentage of supervised samples being used to train and try to decrease this with optimal performance   <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva | Explore different architectures that improve the training of the Semi Supervised GANs. Explore the usage of Deconvolution layers over Upsampling in the SGAN architecture. Implement improved GAN training techniques such as minibatch discrimination on the existing SGAN. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Obtain the dataset from the CAMELYON 2017 dataset. Implement the framework to get patch level label annotation from the lesion level label annotation. Train the SGAN on the newly curated dataset of high resolution cancer images <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+
+
 ### Sep 19, 2018 - Sep 26, 2018 (09/19 - 09/26)
 Member | Tasks 
 ------ | ---------------
