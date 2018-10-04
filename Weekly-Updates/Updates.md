@@ -11,24 +11,15 @@ Member | Tasks
 ------ | ---------------
 Goutam | Tune the percentage of supervised and unsupervised samples in the training phase and try to decrease this with optimal performance. Also, look at complement generator to improve the accuracy of semi-supervised classification on MNIST  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
 Poorva | Experiment with different generator and discriminator architectures to improve the training of the Semi Supervised GANs. Also, examine the usage of Deconvolution layers over Upsampling in the SGAN architecture to improve performance. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-Anushree | Train and tune the SGAN on the patch-level annotated images from the TCGA dataset. Also, incorporate new slide images from the LUSC and SKCM cancerous groups into the framework <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Implement the framework to get patch level label annotation from the lesion level label annotation. Also, incorporate new slide images from the LUSC and SKCM cancerous groups into the framework <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
 
 
 ### Sep 19, 2018 - Sep 26, 2018 (09/19 - 09/26)
 Member | Tasks
 ------ | ---------------
-Goutam | From our discussion with our mentor at PathAI, we need to work to obtain the accuracy of real and fake generated images and improve the accuracy of the classification of images on MNIST data with the Semi-supervised GAN.  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-Poorva | Implement improved GAN training techniques such as feature matching and minibatch discrimination on the existing SGAN. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-Anushree | Obtain the dataset from the CAMELYON 2017 dataset. Implement the framework to get patch level label annotation from the lesion level label annotation.  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-
-
-
-### Sep 19, 2018 - Sep 26, 2018 (09/19 - 09/26)
-Member | Tasks 
------- | ---------------
-Goutam | Implement a semi-supervised GAN on the MNIST Dataset and explore Least squares GAN for as a way of stabilizing the GAN training. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-Poorva | Explore different methods to improve training of GANs on the standard DCGAN such as Mini-batch discrimination and virtual batch normalization. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-Anushree | Improve the performance of the DCGAN by implementing techniques such as historical averaging and one-sided label smoothing to improve GAN training. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Goutam | From our discussion with our mentor at PathAI, we need to work to obtain the accuracy of real and fake generated images and explore Least squares GAN for as a way of stabilizing the GAN training on MNIST.  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva | Implement improved GAN training techniques such as feature matching, minibatch discrimination and virtual batch normalization on the existing SGAN. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Improve the performance of the DCGAN by implementing techniques such as historical averaging and one-sided label smoothing to improve GAN training.  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
 
 
 ### Sep 12, 2018 - Sep 19, 2018 (09/12 - 09/19)
