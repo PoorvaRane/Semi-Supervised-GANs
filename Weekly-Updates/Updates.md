@@ -6,7 +6,7 @@
 
 ## Weekly Updates
 
-### Oct 3, 2018 - Oct 10, 2018(09/26 - 10/03)
+### Oct 3, 2018 - Oct 10, 2018(10/03 - 10/10)
 Member | Tasks
 ------ | ---------------
 Goutam | Tune the percentage of supervised and unsupervised samples in the training phase and try to decrease this with optimal performance. Also, look at complement generator to improve the accuracy of semi-supervised classification on MNIST  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
