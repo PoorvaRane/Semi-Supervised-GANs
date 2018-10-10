@@ -6,6 +6,14 @@
 
 ## Weekly Updates
 
+### Oct 10, 2018 - Oct 17, 2018(10/03 - 10/10)
+Member | Tasks
+------ | ---------------
+Goutam | Training and tuning hyperparameters of the SGAN to obtain optimial performance over the dataset. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva | Running SGAN with ConvTranspose operation over Upsampling to improve performance. Working on identifying factors that will affect the current SGAN architecture when employed on the actual cancer dataset  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | We obtained the real dataset from PathAI last week. Working to create patches and their annotation to rain the SGAN on the  curated dataset of cancer images <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+
 ### Oct 3, 2018 - Oct 10, 2018(10/03 - 10/10)
 Member | Tasks
 ------ | ---------------
