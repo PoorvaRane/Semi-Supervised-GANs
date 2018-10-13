@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-os.makedirs('images')
+os.makedirs('images', exist_ok=True)
 
 
 # In[2]:
@@ -68,10 +68,10 @@ class Generator(nn.Module):
         
         self.linear = nn.Sequential(
             nn.Linear(latent_dim, 128*self.init_size**2),
-            nn.BatchNorm2d(128),
-            nn.Upsample(scale_factor=2)
         )
         self.conv1 = nn.Sequential(
+            nn.BatchNorm2d(128),
+            nn.Upsample(scale_factor=2),
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128, 0.8),
             nn.LeakyReLU(0.2, inplace=True),
@@ -90,7 +90,9 @@ class Generator(nn.Module):
     def forward(self, noise):
         out = self.linear(noise)
         out = out.view(out.shape[0], 128, self.init_size, self.init_size)
-        img = self.conv_blocks(out)
+        img = self.conv1(out)
+        img = self.conv2(img)
+        img = self.conv3(img)
         return img
 
 
@@ -175,8 +177,6 @@ if cuda:
 # Initialize weights
 generator.apply(weights_init_normal)
 discriminator.apply(weights_init_normal)
-print()
-
 
 # In[10]:
 
