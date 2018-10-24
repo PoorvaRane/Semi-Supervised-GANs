@@ -6,12 +6,19 @@
 
 ## Weekly Updates
 
-### Oct 10, 2018 - Oct 17, 2018(10/03 - 10/10)
+### Oct 24, 2018 - Oct 31, 2018(10/24 - 10/31)
+Member | Tasks
+------ | ---------------
+Goutam | Tuning hyperparameters of the SGAN and working on different loss functions / optimizations techniques to achieve good performance on the cancer dataset. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva |  Working on discriminator training in the SGAN architecture that improves classification accuracy using fewer annotated samples <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Creating the annotated dataset using the bitmaps (given from PathAI) that denote the tissue region to remove empty patches from the tissue slide <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+### Oct 10, 2018 - Oct 17, 2018(10/10 - 10/17)
 Member | Tasks
 ------ | ---------------
 Goutam | Training and tuning hyperparameters of the SGAN to obtain optimial performance over the dataset. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
 Poorva | Running SGAN with ConvTranspose operation over Upsampling to improve performance. Working on identifying factors that will affect the current SGAN architecture when employed on the actual cancer dataset  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
-Anushree | We obtained the real dataset from PathAI last week. Working to create patches and their annotation to rain the SGAN on the  curated dataset of cancer images <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | We obtained the real dataset from PathAI last week. Working to create patches and their annotation to train the SGAN on the  curated dataset of cancer images <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
 
 
 ### Oct 3, 2018 - Oct 10, 2018(10/03 - 10/10)
