@@ -57,6 +57,7 @@ class Logger:
             images, normalize=normalize, scale_each=True)
         # Make vertical grid from image tensor
         nrows = int(np.sqrt(num_images))
+        print("nrows = ", nrows)
         grid = vutils.make_grid(
             images, nrow=nrows, normalize=True, scale_each=True)
 
@@ -73,6 +74,7 @@ class Logger:
         # Plot and save horizontal
         fig = plt.figure(figsize=(16, 16))
         plt.imshow(np.moveaxis(horizontal_grid.numpy(), 0, -1))
+        print(np.moveaxis(horizontal_grid.numpy(), 0, -1).shape)
         plt.axis('off')
         if plot_horizontal:
             display.display(plt.gcf())
@@ -82,6 +84,7 @@ class Logger:
         # Save squared
         fig = plt.figure()
         plt.imshow(np.moveaxis(grid.numpy(), 0, -1))
+        print(np.moveaxis(grid.numpy(), 0, -1).shape)
         plt.axis('off')
         self._save_images(fig, epoch, n_batch)
         plt.close()
