@@ -6,3 +6,6 @@ data/
 .DS_Store
 scratch-space/.DS_Store
 images/
+TCGA_LUSC/
+training_data.npz
+
