@@ -81,24 +81,24 @@ class Generator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True)
         )
         self.conv3 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=64, out_channels=channels, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(in_channels=64, out_channels=channels, kernel_size=3, stride=1, padding=1),
             nn.Tanh()
         )
 
     def forward(self, noise):
-        print('--------')
-        print(noise.size())
+        #print('--------')
+        #print(noise.size())
         out = self.linear(noise)
-        print(out.size())
+        #print(out.size())
         out = out.view(out.shape[0], 128, self.init_size, self.init_size)
-        print(out.size())
+        #print(out.size())
         img = self.conv1(out)
-        print(img.size())
+        #print(img.size())
         img = self.conv2(img)
-        print(img.size())
+        #print(img.size())
         img = self.conv3(img)
-        print(img.size())
-        print('---------')
+        #print(img.size())
+        #print('---------')
         return img
 
 
