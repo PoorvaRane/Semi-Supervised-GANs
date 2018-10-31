@@ -6,6 +6,14 @@
 
 ## Weekly Updates
 
+### Oct 31, 2018 - Oct 31, 2018(10/31 - 11/07)
+Member | Tasks
+------ | ---------------
+Goutam |  Rengineering the annotation for the dataset for supervised and unsupervised samples<ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva |  Implementing the optimal loss and SGAN architecture obtain from our experiments, in Pytorch from data obtain with tfrecords  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Training SGAN from the lung cancer dataset received from PathAI as tfrecords on the present architecture with hyperparameter tuning <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+
 ### Oct 24, 2018 - Oct 31, 2018(10/24 - 10/31)
 Member | Tasks
 ------ | ---------------
