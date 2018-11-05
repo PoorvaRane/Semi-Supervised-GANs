@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[15]:
+# In[1]:
 
 
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.init import xavier_uniform_
 import numpy as np
 import torchvision.utils as vutils
 from torchvision.utils import save_image
@@ -20,7 +21,7 @@ import shutil
 import pdb
 
 
-# In[27]:
+# In[2]:
 
 
 # Initialization
@@ -29,9 +30,17 @@ num_classes = 10
 latent_size = 100
 labeled_rate = 0.1
 num_epochs = 1000
-image_size = 28
-batch_size = 32
+image_size = 32
+batch_size = 128
 epsilon = 1e-8 # used to avoid NAN loss
+generator_frequency = 5
+discriminator_frequency = 1
+dropout_rate = 0.25
+
+# Initialize parameters
+lr = 1e-5
+b1 = 0.5 # adam: decay of first order momentum of gradient
+b2 = 0.999 # adam: decay of first order momentum of gradient
 
 log_path = './SSL_GAN_log.csv'
 model_path ='./SSL_GAN_model.ckpt'
@@ -39,13 +48,13 @@ model_path ='./SSL_GAN_model.ckpt'
 os.makedirs('images', exist_ok=True)
 
 
-# In[17]:
+# In[3]:
 
 
 DATA_FOLDER = './torch_data/MNIST'
 
 
-# In[18]:
+# In[4]:
 
 
 # Create Dataset
@@ -96,12 +105,12 @@ class MnistDataset(Dataset):
         return len(self.mnist_dataset)
 
 
-# In[19]:
+# In[5]:
 
 
 # Get dataloaders
 def get_loader(image_size, batch_size):
-    num_workers = 2
+    #num_workers = 2
 
     mnist_train = MnistDataset(image_size=image_size, split='train')
     mnist_test = MnistDataset(image_size=image_size, split='test')
@@ -109,28 +118,39 @@ def get_loader(image_size, batch_size):
     train_loader = DataLoader(
         dataset=mnist_train,
         batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
+        shuffle=True
+        #num_workers=num_workers
     )
 
     test_loader = DataLoader(
         dataset=mnist_test,
         batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
+        shuffle=True
+        #num_workers=num_workers
     )
 
     return train_loader, test_loader
 
 
-# In[20]:
+# In[6]:
+
+
+def initializer(m):
+    # Run xavier on all weights and zero all biases
+    if hasattr(m, 'weight'):
+        if m.weight.ndimension() > 1:
+            xavier_uniform_(m.weight.data)
+    if hasattr(m, 'bias'):
+        m.bias.data.zero_()
+
+
+# In[7]:
 
 
 class DiscriminatorNet(torch.nn.Module):
     def __init__(self):
         super(DiscriminatorNet, self).__init__()
-        
-        dropout_rate = 0.25
+          
         d = 16
         
         # Conv operations
@@ -154,10 +174,14 @@ class DiscriminatorNet(torch.nn.Module):
             nn.Conv2d(in_channels=d*4, out_channels=d*8, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True)
         )
-        
+        self.conv5 = nn.Sequential(
+            nn.Conv2d(in_channels=d*8, out_channels=d*8, kernel_size=4, stride=2, padding=1),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
         # Linear 
         self.linear = nn.Linear(in_features=d*8, out_features=(num_classes + 1))
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
+        self.apply(initializer)
         
     def forward(self, x):
         # Convolutional Operations
@@ -165,6 +189,7 @@ class DiscriminatorNet(torch.nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
+        x = self.conv5(x)
         
         # Linear
         flatten = x.view(x.size(0), -1)
@@ -173,14 +198,13 @@ class DiscriminatorNet(torch.nn.Module):
         return flatten, linear, prob
 
 
-# In[21]:
+# In[8]:
 
 
 class GeneratorNet(torch.nn.Module):
     def __init__(self):
         super(GeneratorNet, self).__init__()
         
-        dropout_rate = 0.25
         d = 16
         
         # Conv operations
@@ -200,11 +224,18 @@ class GeneratorNet(torch.nn.Module):
             nn.ReLU(inplace=True)
         )
         self.deconv4 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=d*2, out_channels=num_channels, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(in_channels=d*2, out_channels=d, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(num_features=d),
+            nn.ReLU(inplace=True)
+        )
+        self.deconv5 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=d, out_channels=num_channels, kernel_size=4, stride=2, padding=1),
             nn.Tanh()
         )
+        self.apply(initializer)
         
     def forward(self, x):
+        
         x = x.view(-1, x.size(1), 1, 1)
         
         # Deconvolutional Operations
@@ -212,11 +243,12 @@ class GeneratorNet(torch.nn.Module):
         x = self.deconv2(x)
         x = self.deconv3(x)
         x = self.deconv4(x)
+        x = self.deconv5(x)
         
         return x
 
 
-# In[22]:
+# In[9]:
 
 
 def noise(size):
@@ -226,16 +258,7 @@ def noise(size):
     return n
 
 
-# In[23]:
-
-
-# Initialize parameters
-lr = 0.0001 
-b1 = 0.5 # adam: decay of first order momentum of gradient
-b2 = 0.999 # adam: decay of first order momentum of gradient
-
-
-# In[24]:
+# In[10]:
 
 
 # Models
@@ -260,7 +283,7 @@ if torch.cuda.is_available():
     cross_loss = cross_loss.cuda()
 
 
-# In[25]:
+# In[11]:
 
 
 # Visualize Data
@@ -280,7 +303,91 @@ def plot_fake_data(data, grid_size = [5, 5]):
     plt.show()
 
 
-# In[29]:
+# In[12]:
+
+
+def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
+    
+    # Generate Fake Image
+    z = noise(b_size)
+    fake_img = generator(z)
+
+    # Discriminator outputs for real and fake
+    d_real_flatten, d_real_linear, d_real_prob = discriminator(img.detach())
+    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
+    
+    optimizer_D.zero_grad()
+        
+    # Supervised Loss
+    supervised_loss = cross_loss(d_real_linear, label)
+#   d_class_loss_entropy = - torch.sum(label_onehot.float() * torch.log(d_real_prob), dim=1)
+
+    masked_supervised_loss = torch.mul(label_mask, supervised_loss)
+    delim = torch.Tensor([1.0])
+    if torch.cuda.is_available():
+        delim = delim.cuda()
+    mask_sum = torch.max(delim, torch.sum(label_mask))
+    d_class_loss = torch.sum(label_mask * masked_supervised_loss) / mask_sum
+
+    # Unsupervised (GAN) Loss
+    # data is real
+    prob_real_is_real = 1.0 - d_real_prob[:, -1] + epsilon
+    tmp_log = torch.log(prob_real_is_real)
+    d_real_loss = -1.0 * torch.mean(tmp_log)
+
+    # data is fake
+    prob_fake_is_fake = d_fake_prob[:, -1] + epsilon
+    tmp_log = torch.log(prob_fake_is_fake)
+    d_fake_loss = -1.0 * torch.mean(tmp_log)
+
+    # loss and weight update
+    d_loss = d_class_loss + d_real_loss + d_fake_loss
+    d_loss.backward(retain_graph=True)
+    optimizer_D.step()
+    
+    # Accuracy
+    _, predicted = torch.max(d_real_prob[:, :-1], dim=1)
+    correct_batch = torch.sum(torch.eq(predicted, label))
+    batch_accuracy = correct_batch.item()/float(b_size)
+    
+    return d_loss, batch_accuracy
+
+
+# In[13]:
+
+
+def train_generator(optimizer_G, b_size, epsilon):
+    
+    # Generate Fake Image
+    z = noise(b_size)
+    fake_img = generator(z)
+
+    # Discriminator outputs for real and fake
+    d_real_flatten, d_real_linear, d_real_prob = discriminator(img.detach())
+    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
+    
+    optimizer_G.zero_grad()
+        
+    # fake data is mistaken to be real
+    prob_fake_is_real = 1.0 - d_fake_prob[:, -1] + epsilon
+    tmp_log =  torch.log(prob_fake_is_real)
+    g_fake_loss = -1.0 * torch.mean(tmp_log)
+
+    # Feature Maching
+    tmp1 = torch.mean(d_real_flatten, dim = 0)
+    tmp2 = torch.mean(d_fake_flatten, dim = 0)
+    diff = tmp1 - tmp2
+    g_feature_loss = torch.mean(torch.mul(diff, diff))
+
+    # Loss and weight update
+    g_loss = g_fake_loss + g_feature_loss
+    g_loss.backward()
+    optimizer_G.step()
+
+    return g_loss, fake_img
+
+
+# In[14]:
 
 
 '''
@@ -290,8 +397,7 @@ generator.train()
 discriminator.train()
 
 for epoch in range(num_epochs):
-    correct_epoch = 0
-    total = 0
+    total_accuracy = 0
     G_loss = 0
     D_loss = 0
     
@@ -307,83 +413,38 @@ for epoch in range(num_epochs):
             
         b_size = img.size(0)
         
-        # Generate Fake Image
-        z = noise(b_size)
-        fake_img = generator(z)
-        
-        # Discriminator outputs for real and fake
-        d_real_flatten, d_real_linear, d_real_prob = discriminator(img.detach())
-        d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
-        
         ################### Discriminator ####################
-        optimizer_D.zero_grad()
+        batch_d_loss = 0
+        batch_accuracy = 0
         
-        # Supervised Loss
-        supervised_loss = cross_loss(d_real_linear, label)
-#         d_class_loss_entropy = - torch.sum(label_onehot.float() * torch.log(d_real_prob), dim=1)
-                
-        masked_supervised_loss = torch.mul(label_mask, supervised_loss)
-        delim = torch.Tensor([1.0])
-        if torch.cuda.is_available():
-            delim = delim.cuda()
-        mask_sum = torch.max(delim, torch.sum(label_mask))
-        d_class_loss = torch.sum(label_mask * masked_supervised_loss) / mask_sum
-        
-        # Unsupervised (GAN) Loss
-        # data is real
-        prob_real_is_real = 1.0 - d_real_prob[:, -1] + epsilon
-        tmp_log = torch.log(prob_real_is_real)
-        d_real_loss = -1.0 * torch.mean(tmp_log)
-
-        # data is fake
-        prob_fake_is_fake = d_fake_prob[:, -1] + epsilon
-        tmp_log = torch.log(prob_fake_is_fake)
-        d_fake_loss = -1.0 * torch.mean(tmp_log)
-
-        d_loss = d_class_loss + d_real_loss + d_fake_loss
-
-        d_loss.backward(retain_graph=True)
-        optimizer_D.step()
-        
+        for d_i in range(discriminator_frequency):
+            d_loss, d_accuracy = train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon)
+            batch_d_loss += d_loss.item()  
+            batch_accuracy += d_accuracy
+            
+        batch_d_loss = batch_d_loss/float(discriminator_frequency)
+        batch_accuracy = batch_accuracy/float(discriminator_frequency)
         
         ################### Generator ####################
-        optimizer_G.zero_grad()
+        batch_g_loss = 0
+        for g_i in range(generator_frequency):
+            g_loss, fake_img = train_generator(optimizer_G, b_size, epsilon)
+            batch_g_loss += g_loss.item()
+        batch_g_loss = batch_g_loss/float(generator_frequency)
+       
+        total_accuracy += batch_accuracy
+        D_loss += batch_d_loss
+        G_loss += batch_g_loss
         
-        # fake data is mistaken to be real
-        prob_fake_is_real = 1.0 - d_fake_prob[:, -1] + epsilon
-        tmp_log =  torch.log(prob_fake_is_real)
-        g_fake_loss = -1.0 * torch.mean(tmp_log)
-
-        # Feature Maching
-        tmp1 = torch.mean(d_real_flatten, dim = 0)
-        tmp2 = torch.mean(d_fake_flatten, dim = 0)
-        diff = tmp1 - tmp2
-        g_feature_loss = torch.mean(torch.mul(diff, diff))
-
-        g_loss = g_fake_loss + g_feature_loss
-        
-        g_loss.backward()
-        optimizer_G.step()
-        
-        # Accuracy
-        _, predicted = torch.max(d_real_prob[:, :-1], dim=1)
-        correct_batch = torch.sum(torch.eq(predicted, label))
-        batch_accuracy = correct_batch/float(b_size)
-        
-        correct_epoch += correct_batch
-        total += b_size
-        D_loss += d_loss.item()
-        G_loss += g_loss.item()
-        
-#         if i%180 == 179:
-#             print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %d%%] [G loss: %f]" % (epoch, num_epochs, i, 
-#                                        len(train_loader), d_loss.item(), 100 * batch_accuracy, g_loss.item()))
+        if i%b_size == b_size-1:
+            print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %d%%] [G loss: %f]" % (epoch, num_epochs, i, 
+                                       len(train_loader), d_loss.item(), 100 * batch_accuracy, g_loss.item()))
 
         
     # Print Epoch results
-    total_accuracy = correct_epoch/float(total)
-    avg_D_loss = D_loss/float(i)
-    avg_G_loss = G_loss/float(i)
+    total_accuracy = total_accuracy/float(i+1)
+    avg_D_loss = D_loss/float(i+1)
+    avg_G_loss = G_loss/float(i+1)
     
     print('--------------------------------------------------------------------')
     print("===> [Epoch %d/%d] [Avg D loss: %f, avg acc: %d%%] [Avg G loss: %f]" % (epoch, num_epochs, 
