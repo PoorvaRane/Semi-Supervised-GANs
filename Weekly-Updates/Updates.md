@@ -6,7 +6,14 @@
 
 ## Weekly Updates
 
-### Oct 31, 2018 - Oct 31, 2018(10/31 - 11/07)
+### Nov 07, 2018 - Nov 14, 2018(10/31 - 11/07)
+Member | Tasks
+------ | ---------------
+Goutam |  Tfrecords obtained from PathAI for the annotated regions. Implemented module to convert tfrecords into a readable format for pytorch and store dataset as hdf5 files<ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva |  Implement WGAN-GP on a publicly available dataset. Identify and tune hyperparameters to improve accuracy. Implement techniques from the paper "Improved Semisupervised learning requires a bad generator"  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Implement WGAN-GP on a publicly available dataset. Identify and tune hyperparameters to improve accuracy. Implement techniques from "Improved Semisupervised learning requires a bad generator"  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+### Oct 31, 2018 - Nov 07, 2018(10/31 - 11/07)
 Member | Tasks
 ------ | ---------------
 Goutam |  Rengineering the annotation for the dataset for supervised and unsupervised samples<ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
