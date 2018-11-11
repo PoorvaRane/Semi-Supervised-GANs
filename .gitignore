@@ -8,4 +8,6 @@ scratch-space/.DS_Store
 images/
 TCGA_LUSC/
 training_data.npz
+logs/
+wgan_images/
 
