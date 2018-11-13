@@ -10,4 +10,8 @@ TCGA_LUSC/
 training_data.npz
 logs/
 wgan_images/
+tcga_check/
+cifar_images/
+patch_data/
+tcga_images/
 
