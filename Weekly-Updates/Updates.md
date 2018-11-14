@@ -6,7 +6,14 @@
 
 ## Weekly Updates
 
-### Nov 07, 2018 - Nov 14, 2018(10/31 - 11/07)
+### Nov 14, 2018 - Nov 21, 2018 (11/14 - 11/21)
+Member | Tasks
+------ | ---------------
+Goutam |  Write scripts to generate patches within a given annotated region. Implement module to identify all possible patches conatined within a given bounding polygon. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva |  Implement SGAN with weight normalization and Guassian Noise inclusion on the CIFAR dataset. Use a similar architecure to perform classification on the TCGA dataset and fine-tune hyperparameters to improve classification accuracy. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Implement a complement generator and techniques specified in the paper "Virtual Adversarial Training" and evaluate whether these techniques are able to improve the accuracy further. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+### Nov 07, 2018 - Nov 14, 2018 (11/07 - 11/14)
 Member | Tasks
 ------ | ---------------
 Goutam |  Tfrecords obtained from PathAI for the annotated regions. Implemented module to convert tfrecords into a readable format for pytorch and store dataset as hdf5 files<ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
@@ -36,7 +43,7 @@ Poorva | Running SGAN with ConvTranspose operation over Upsampling to improve pe
 Anushree | We obtained the real dataset from PathAI last week. Working to create patches and their annotation to train the SGAN on the  curated dataset of cancer images <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
 
 
-### Oct 3, 2018 - Oct 10, 2018(10/03 - 10/10)
+### Oct 3, 2018 - Oct 10, 2018 (10/03 - 10/10)
 Member | Tasks
 ------ | ---------------
 Goutam | Tune the percentage of supervised and unsupervised samples in the training phase and try to decrease this with optimal performance. Also, look at complement generator to improve the accuracy of semi-supervised classification on MNIST  <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
