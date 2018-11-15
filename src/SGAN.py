@@ -249,24 +249,16 @@ class DiscriminatorNet(torch.nn.Module):
         self.apply(initializer)
         
     def forward(self, x):
-        print("Before = ", x.size())
         x = self.begin(x)
-        print("After begin = ", x.size())
         # Convolutional Operations
         x = self.wn_conv1(x)
-        print("wn_conv1 = ", x.size())
         x = self.wn_conv2(x)
-        print("wn_conv2 = ", x.size())
         x = self.wn_conv3(x)
-        print("wn_conv3 = ", x.size())
         
         # Linear
         flatten = x.mean(dim=3).mean(dim=2)
-        print("flatten = ", flatten.size())
         linear = self.wn_linear(flatten)
-        print("linear = ", linear.size())
         prob = self.softmax(linear)
-        print("prob = ", prob.size())
         return flatten, linear, prob
 
 
@@ -380,8 +372,6 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     fake_img = generator(z)
 
     # Discriminator outputs for real and fake
-    print('img = ', img.size())
-    print('fake_img = ', fake_img.size())
     d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
     d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
     
