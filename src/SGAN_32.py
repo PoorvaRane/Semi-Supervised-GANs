@@ -93,6 +93,21 @@ class TCGADataset(Dataset):
             
         images = np.concatenate(images)
         labels = np.concatenate(labels)
+        labels = np.asarray([1 if x in [330.0,331.0] else 0 for x in labels])
+        
+        # Balance dataset
+        cancer = np.count_nonzero(labels)
+        noncancer = (labels.shape[0]-cancer)
+        minimum = min(cancer,noncancer)
+        sample_idxs_cancer = random.sample(list(np.where(labels == 1)[0]), minimum)
+        sample_idxs_nocancer = random.sample(list(np.where(labels == 0)[0]), minimum)
+        
+        new_idxs = []
+        new_idxs.extend(sample_idxs_cancer)
+        new_idxs.extend(sample_idxs_nocancer)
+        random.shuffle(new_idxs)
+        images = images[new_idxs]
+        labels = labels[new_idxs]
 
         return images, labels
     
