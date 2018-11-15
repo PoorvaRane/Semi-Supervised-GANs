@@ -33,7 +33,7 @@ num_classes = 10
 latent_size = 100
 labeled_rate = 0.1
 num_epochs = 1000
-image_size = 128
+image_size = 32
 batch_size = 32
 epsilon = 1e-8 # used to avoid NAN loss
 generator_frequency = 1
@@ -45,8 +45,9 @@ lr = 1e-5
 b1 = 0.5 # adam: decay of first order momentum of gradient
 b2 = 0.999 # adam: decay of first order momentum of gradient
 
-model_path ='./TCGA_128.tar'
-image_dir = 'tcga_images_128'
+log_path = './SSL_TCGA_log.csv'
+model_path ='./TCGA_32.tar'
+image_dir = 'tcga_images_32'
 
 os.makedirs(image_dir, exist_ok=True)
 
@@ -223,17 +224,6 @@ class DiscriminatorNet(torch.nn.Module):
         
         # CNNBlock 2
         self.wn_conv2 = nn.Sequential(
-            weight_norm(nn.Conv2d(in_channels=filter1, out_channels=filter1, kernel_size=3, stride=1, padding=1), name='weight'),
-            nn.LeakyReLU(0.2),
-            weight_norm(nn.Conv2d(in_channels=filter1, out_channels=filter1, kernel_size=3, stride=1, padding=1), name='weight'),
-            nn.LeakyReLU(0.2),
-            weight_norm(nn.Conv2d(in_channels=filter1, out_channels=filter1, kernel_size=3, stride=2, padding=1), name='weight'),
-            nn.LeakyReLU(0.2),
-            nn.Dropout2d(dropout_rate)
-        )
-        
-        # CNNBlock 3
-        self.wn_conv3 = nn.Sequential(
             weight_norm(nn.Conv2d(in_channels=filter1, out_channels=filter2, kernel_size=3, stride=1, padding=1), name='weight'),
             nn.LeakyReLU(0.2),
             weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=1, padding=1), name='weight'),
@@ -243,19 +233,8 @@ class DiscriminatorNet(torch.nn.Module):
             nn.Dropout2d(dropout_rate)
         )
         
-        # CNNBlock 4
-        self.wn_conv4 = nn.Sequential(
-            weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=1, padding=1), name='weight'),
-            nn.LeakyReLU(0.2),
-            weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=1, padding=1), name='weight'),
-            nn.LeakyReLU(0.2),
-            weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=2, padding=1), name='weight'),
-            nn.LeakyReLU(0.2),
-            nn.Dropout2d(dropout_rate)
-        )
-        
-        # CNNBlock 5
-        self.wn_conv5 = nn.Sequential(
+        # CNNBlock 3
+        self.wn_conv3 = nn.Sequential(
             weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=1, padding=0), name='weight'),
             nn.LeakyReLU(0.2),
             weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=1, stride=1, padding=0), name='weight'),
@@ -270,18 +249,24 @@ class DiscriminatorNet(torch.nn.Module):
         self.apply(initializer)
         
     def forward(self, x):
+        print("Before = ", x.size())
         x = self.begin(x)
+        print("After begin = ", x.size())
         # Convolutional Operations
         x = self.wn_conv1(x)
+        print("wn_conv1 = ", x.size())
         x = self.wn_conv2(x)
+        print("wn_conv2 = ", x.size())
         x = self.wn_conv3(x)
-        x = self.wn_conv4(x)
-        x = self.wn_conv5(x)
+        print("wn_conv3 = ", x.size())
         
         # Linear
         flatten = x.mean(dim=3).mean(dim=2)
+        print("flatten = ", flatten.size())
         linear = self.wn_linear(flatten)
+        print("linear = ", linear.size())
         prob = self.softmax(linear)
+        print("prob = ", prob.size())
         return flatten, linear, prob
 
 
@@ -301,25 +286,15 @@ class GeneratorNet(torch.nn.Module):
         self.deconv1 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
             nn.BatchNorm2d(256),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         )
         self.deconv2 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
             nn.BatchNorm2d(128),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         )
-        self.deconv3 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
-            nn.BatchNorm2d(64),
-            nn.ReLU()
-        )
-        self.deconv4 = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
-            nn.BatchNorm2d(32),
-            nn.ReLU()
-        )
-        self.wn_deconv5 = nn.Sequential(
-            weight_norm(nn.ConvTranspose2d(in_channels=32, out_channels=3, kernel_size=5, stride=2, padding=2, output_padding=1),
+        self.wn_deconv3 = nn.Sequential(
+            weight_norm(nn.ConvTranspose2d(in_channels=128, out_channels=3, kernel_size=5, stride=2, padding=2, output_padding=1),
                         name='weight'),
             nn.Tanh()
         )
@@ -333,9 +308,7 @@ class GeneratorNet(torch.nn.Module):
         # Deconvolutional Operations
         x = self.deconv1(x)
         x = self.deconv2(x)
-        x = self.deconv3(x)
-        x = self.deconv4(x)
-        x = self.wn_deconv5(x)
+        x = self.wn_deconv3(x)
 
         return x
 
@@ -407,6 +380,8 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     fake_img = generator(z)
 
     # Discriminator outputs for real and fake
+    print('img = ', img.size())
+    print('fake_img = ', fake_img.size())
     d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
     d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
     
@@ -483,11 +458,13 @@ def train_generator(optimizer_G, b_size, epsilon):
 
 # In[ ]:
 
-def save_checkpoint(state, model_type):
-    torch.save(state, model_type + '_checkpoint_128.tar')
 
-        
+def save_checkpoint(state, model_type):
+    torch.save(state, model_type + '_checkpoint_32.tar')
+
+
 # In[ ]:
+
 
 '''
 Start Training

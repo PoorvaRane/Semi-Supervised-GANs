@@ -530,12 +530,12 @@ for epoch in range(num_epochs):
         # Save best model
         save_checkpoint({
         'epoch': epoch + 1,
-        'state_dict': discriminator.state_dict()
+        'state_dict': discriminator.state_dict(),
         'optimizer' : optimizer_D.state_dict(),
         }, 'dis')
         save_checkpoint({
         'epoch': epoch + 1,
-        'state_dict': generator.state_dict()
+        'state_dict': generator.state_dict(),
         'optimizer' : optimizer_G.state_dict(),
         }, 'gen')
         
