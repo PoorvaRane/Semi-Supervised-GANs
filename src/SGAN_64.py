@@ -29,7 +29,7 @@ from PIL import Image
 
 # Initialization
 num_channels = 3
-num_classes = 10
+num_classes = 2
 latent_size = 100
 labeled_rate = 0.1
 num_epochs = 1000
@@ -440,7 +440,7 @@ def train_generator(optimizer_G, b_size, epsilon):
 
     # Discriminator outputs for real and fake
     d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
-    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
+    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
     
     optimizer_G.zero_grad()
         
@@ -557,31 +557,31 @@ for epoch in range(num_epochs):
     # Save Images
     save_image(fake_img[:25], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=5, normalize=True)
     
-    # Tensorboard logging 
+#     # Tensorboard logging 
     
-    # 1. Log scalar values (scalar summary)
-    info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'accuracy': total_accuracy }
-    for tag, value in info.items():
-        logger.scalar_summary(tag, value, epoch)
+#     # 1. Log scalar values (scalar summary)
+#     info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'accuracy': total_accuracy }
+#     for tag, value in info.items():
+#         logger.scalar_summary(tag, value, epoch)
     
-    # 2. Log values and gradients of the parameters (histogram summary)
-    # Generator summary
-    for tag, value in generator.named_parameters():
-        tag = tag.replace('.', '/')
-        logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
-        logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
+#     # 2. Log values and gradients of the parameters (histogram summary)
+#     # Generator summary
+#     for tag, value in generator.named_parameters():
+#         tag = tag.replace('.', '/')
+#         logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
+#         logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
     
-    #Discriminator summary
-    for tag, value in discriminator.named_parameters():
-        tag = tag.replace('.', '/')
-        logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
-        logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
+#     #Discriminator summary
+#     for tag, value in discriminator.named_parameters():
+#         tag = tag.replace('.', '/')
+#         logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
+#         logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
         
-    # 3. Log generated images (image summary)
-    info = { image_dir : fake_img.view(-1, image_size, image_size)[:10].detach().cpu().numpy() }
+#     # 3. Log generated images (image summary)
+#     info = { image_dir : fake_img.view(-1, image_size, image_size)[:10].detach().cpu().numpy() }
 
-    for tag, images in info.items():
-        logger.image_summary(tag, images, epoch)
+#     for tag, images in info.items():
+#         logger.image_summary(tag, images, epoch)
         
 
 
