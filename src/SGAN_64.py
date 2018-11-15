@@ -390,8 +390,8 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     fake_img = generator(z)
 
     # Discriminator outputs for real and fake
-    d_real_flatten, d_real_linear, d_real_prob = discriminator(img.detach())
-    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
+    d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
+    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
     
     optimizer_D.zero_grad()
         
