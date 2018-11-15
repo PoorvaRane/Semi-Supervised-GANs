@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import matplotlib.pyplot as plt
@@ -24,12 +24,12 @@ from logger import Logger
 from PIL import Image
 
 
-# In[2]:
+# In[ ]:
 
 
 # Initialization
 num_channels = 3
-num_classes = 10
+num_classes = 2
 latent_size = 100
 labeled_rate = 0.1
 num_epochs = 1000
@@ -52,7 +52,7 @@ image_dir = 'tcga_images_32'
 os.makedirs(image_dir, exist_ok=True)
 
 
-# In[3]:
+# In[ ]:
 
 
 # Create Dataset
@@ -93,6 +93,7 @@ class TCGADataset(Dataset):
             
         images = np.concatenate(images)
         labels = np.concatenate(labels)
+
         return images, labels
     
     def save_images(self):
@@ -138,7 +139,7 @@ class TCGADataset(Dataset):
         return len(self.labels)
 
 
-# In[4]:
+# In[ ]:
 
 
 # Get dataloaders
@@ -165,7 +166,7 @@ def get_loader(image_size, batch_size):
     return train_loader#, test_loader
 
 
-# In[5]:
+# In[ ]:
 
 
 def initializer(m):
@@ -178,7 +179,7 @@ def initializer(m):
         m.bias.data.zero_() 
 
 
-# In[6]:
+# In[ ]:
 
 
 class GaussianNoise(torch.nn.Module):
@@ -194,7 +195,7 @@ class GaussianNoise(torch.nn.Module):
             return x
 
 
-# In[7]:
+# In[ ]:
 
 
 class DiscriminatorNet(torch.nn.Module):
@@ -262,7 +263,7 @@ class DiscriminatorNet(torch.nn.Module):
         return flatten, linear, prob
 
 
-# In[8]:
+# In[ ]:
 
 
 class GeneratorNet(torch.nn.Module):
@@ -305,7 +306,7 @@ class GeneratorNet(torch.nn.Module):
         return x
 
 
-# In[9]:
+# In[ ]:
 
 
 def noise(size):
@@ -315,7 +316,7 @@ def noise(size):
     return n
 
 
-# In[10]:
+# In[ ]:
 
 
 # Models
@@ -342,7 +343,7 @@ if torch.cuda.is_available():
     cross_loss = cross_loss.cuda()
 
 
-# In[11]:
+# In[ ]:
 
 
 # Visualize Data
@@ -362,7 +363,7 @@ def plot_fake_data(data, grid_size = [5, 5]):
     plt.show()
 
 
-# In[12]:
+# In[ ]:
 
 
 def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
@@ -412,7 +413,7 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     return d_loss, batch_accuracy
 
 
-# In[13]:
+# In[ ]:
 
 
 def train_generator(optimizer_G, b_size, epsilon):
@@ -423,7 +424,7 @@ def train_generator(optimizer_G, b_size, epsilon):
 
     # Discriminator outputs for real and fake
     d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
-    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
+    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
     
     optimizer_G.zero_grad()
         
@@ -542,6 +543,7 @@ for epoch in range(num_epochs):
     # Save Images
     save_image(fake_img[:25], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=5, normalize=True)
     
+    '''
     # Tensorboard logging 
     
     # 1. Log scalar values (scalar summary)
@@ -567,6 +569,7 @@ for epoch in range(num_epochs):
 
     for tag, images in info.items():
         logger.image_summary(tag, images, epoch)
+    '''
         
 
 
