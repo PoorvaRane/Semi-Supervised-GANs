@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[31]:
-
+# In[]:
 
 import matplotlib.pyplot as plt
 import torch
@@ -23,9 +22,7 @@ import pdb
 from logger import Logger
 from PIL import Image
 
-
-# In[32]:
-
+# In[ ]:
 
 # Initialization
 num_channels = 3
@@ -52,8 +49,7 @@ image_dir = 'tcga_images_32'
 os.makedirs(image_dir, exist_ok=True)
 
 
-# In[33]:
-
+# In[]:
 
 # Create Dataset
 class TCGADataset(Dataset):
@@ -108,7 +104,7 @@ class TCGADataset(Dataset):
         random.shuffle(new_idxs)
         images = images[new_idxs]
         labels = labels[new_idxs]
-        
+
         return images, labels
     
     def save_images(self):
@@ -141,6 +137,7 @@ class TCGADataset(Dataset):
 
     def __getitem__(self, idx):
         data, label = self.patches[idx], self.labels[idx]
+
         label_onehot = self._one_hot(label)
         if self.split == 'train':
             return self.transform(Image.fromarray(data)), label, label_onehot, self.label_mask[idx]
@@ -148,10 +145,6 @@ class TCGADataset(Dataset):
 
     def __len__(self):
         return len(self.labels)
-
-
-# In[34]:
-
 
 # Get dataloaders
 def get_loader(image_size, batch_size):
@@ -177,9 +170,6 @@ def get_loader(image_size, batch_size):
     return train_loader#, test_loader
 
 
-# In[35]:
-
-
 def initializer(m):
     # Run xavier on all weights and zero all biases
     if hasattr(m, 'weight'):
@@ -189,8 +179,6 @@ def initializer(m):
     if hasattr(m, 'bias') and m.bias is not None:
         m.bias.data.zero_() 
 
-
-# In[36]:
 
 
 class GaussianNoise(torch.nn.Module):
@@ -206,8 +194,7 @@ class GaussianNoise(torch.nn.Module):
             return x
 
 
-# In[37]:
-
+# In[ ]:
 
 class DiscriminatorNet(torch.nn.Module):
     def __init__(self):
@@ -274,8 +261,7 @@ class DiscriminatorNet(torch.nn.Module):
         return flatten, linear, prob
 
 
-# In[38]:
-
+# In[ ]:
 
 class GeneratorNet(torch.nn.Module):
     def __init__(self):
@@ -317,8 +303,7 @@ class GeneratorNet(torch.nn.Module):
         return x
 
 
-# In[39]:
-
+# In[ ]:
 
 def noise(size):
     n = Variable(torch.randn(size, 100))
@@ -327,8 +312,7 @@ def noise(size):
     return n
 
 
-# In[40]:
-
+# In[ ]:
 
 # Models
 discriminator = DiscriminatorNet()
@@ -354,8 +338,7 @@ if torch.cuda.is_available():
     cross_loss = cross_loss.cuda()
 
 
-# In[41]:
-
+# In[ ]:
 
 # Visualize Data
 def plot_fake_data(data, grid_size = [5, 5]):
@@ -374,8 +357,7 @@ def plot_fake_data(data, grid_size = [5, 5]):
     plt.show()
 
 
-# In[46]:
-
+# In[ ]:
 
 def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     
@@ -424,9 +406,6 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     return d_loss, batch_accuracy
 
 
-# In[47]:
-
-
 def train_generator(optimizer_G, b_size, epsilon):
     
     # Generate Fake Image
@@ -458,14 +437,9 @@ def train_generator(optimizer_G, b_size, epsilon):
     return g_loss, fake_img
 
 
-# In[48]:
-
 
 def save_checkpoint(state, model_type):
     torch.save(state, model_type + '_checkpoint_32.tar')
-
-
-# In[49]:
 
 
 '''
@@ -551,8 +525,7 @@ for epoch in range(num_epochs):
                                                         avg_D_loss, 100 * total_accuracy, avg_G_loss))
     print('--------------------------------------------------------------------')
     
-    # Save Images
-    save_image(fake_img[:16], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=5, normalize=True)
+    save_image(fake_img[:16], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=4, normalize=True)
     
     # Tensorboard logging 
     
@@ -579,7 +552,6 @@ for epoch in range(num_epochs):
 
     for tag, images in info.items():
         logger.image_summary(tag, images, epoch)
-        
 
 # In[ ]:
 

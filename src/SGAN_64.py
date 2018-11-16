@@ -140,6 +140,7 @@ class TCGADataset(Dataset):
 
     def __getitem__(self, idx):
         data, label = self.patches[idx], self.labels[idx]
+
         label_onehot = self._one_hot(label)
         if self.split == 'train':
             return self.transform(Image.fromarray(data)), label, label_onehot, self.label_mask[idx]
