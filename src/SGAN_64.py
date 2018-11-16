@@ -34,7 +34,7 @@ latent_size = 100
 labeled_rate = 0.1
 num_epochs = 1000
 image_size = 64
-batch_size = 32
+batch_size = 128
 epsilon = 1e-8 # used to avoid NAN loss
 generator_frequency = 1
 discriminator_frequency = 1
@@ -140,10 +140,6 @@ class TCGADataset(Dataset):
 
     def __getitem__(self, idx):
         data, label = self.patches[idx], self.labels[idx]
-        if label in [330.0,331.0]:
-            label = 1
-        else:
-            label = 0
         label_onehot = self._one_hot(label)
         if self.split == 'train':
             return self.transform(Image.fromarray(data)), label, label_onehot, self.label_mask[idx]
@@ -571,7 +567,7 @@ for epoch in range(num_epochs):
     print('--------------------------------------------------------------------')
     
     # Save Images
-    save_image(fake_img[:25], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=5, normalize=True)
+    save_image(fake_img[:36], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=6, normalize=True)
     
 #     # Tensorboard logging 
     

@@ -13,7 +13,7 @@ wgan_images/
 tcga_check/
 cifar_images/
 patch_data/
-tcga_images/
+tcga_images*/
 *.tar
 *.txt
 
