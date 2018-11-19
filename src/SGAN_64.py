@@ -75,7 +75,7 @@ class TCGADataset(Dataset):
         else:
             data_dir = os.path.join(data_dir, 'dev')
             
-        all_files = ['5.npz', '6.npz', '7.npz', '8.npz', '9.npz', '10.npz'] #os.listdir(data_dir)
+        all_files = os.listdir(data_dir)
         images = []
         labels = []
         
@@ -91,23 +91,7 @@ class TCGADataset(Dataset):
             labels.append(y)
             
         images = np.concatenate(images)
-        labels = np.concatenate(labels)
-        labels = np.asarray([1 if x in [330.0,331.0] else 0 for x in labels])
-        
-        # Balance dataset
-        cancer = np.count_nonzero(labels)
-        noncancer = (labels.shape[0]-cancer)
-        minimum = min(cancer,noncancer)
-        sample_idxs_cancer = random.sample(list(np.where(labels == 1)[0]), minimum)
-        sample_idxs_nocancer = random.sample(list(np.where(labels == 0)[0]), minimum)
-        
-        new_idxs = []
-        new_idxs.extend(sample_idxs_cancer)
-        new_idxs.extend(sample_idxs_nocancer)
-        random.shuffle(new_idxs)
-        images = images[new_idxs]
-        labels = labels[new_idxs]
-        
+        labels = np.concatenate(labels)  
         return images, labels
     
     def save_images(self):
