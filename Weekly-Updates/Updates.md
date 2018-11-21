@@ -6,6 +6,13 @@
 
 ## Weekly Updates
 
+### Nov 21, 2018 - Nov 28, 2018 (11/21 - 11/28)
+Member | Tasks
+------ | ---------------
+Goutam |  Write scripts to rectify the patch generation code such that each patch that is being generated lies within the annotated bounding boxes <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva |  Experiment different hyperparamenters such as different learning rates and generator discriminator frequency on the newly generated patches to be able to generate images of size 32x32 and 64x64 while improving the classification accuracy further. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Experiment different hyperparamenters such as different learning rates and generator discriminator frequency on the newly generated patches to be able to generate images of size 32x32 and 64x64 while improving the classification accuracy further. <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
 ### Nov 14, 2018 - Nov 21, 2018 (11/14 - 11/21)
 Member | Tasks
 ------ | ---------------
