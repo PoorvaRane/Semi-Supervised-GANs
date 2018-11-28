@@ -6,6 +6,14 @@
 
 ## Weekly Updates
 
+### Nov 28, 2018 - Dec 05, 2018 (11/28 - 12/05)
+Member | Tasks
+------ | ---------------
+Goutam |  Adding parallel processing and optimzing the codebase for faster processing during generation and training <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Poorva |  Implement and tune architecture to increase discriminator accuracy to get a greater margin over the supervised baseline <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+Anushree | Fixed bugs in annotation code and generated more accurate and better quality patches. Rerun the GAN on the newly curated dataset <ul><li>Status of Previous Week's Tasks - Completed.</li></ul>
+
+
 ### Nov 21, 2018 - Nov 28, 2018 (11/21 - 11/28)
 Member | Tasks
 ------ | ---------------
