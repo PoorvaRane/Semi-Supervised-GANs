@@ -34,7 +34,7 @@ latent_size = 100
 labeled_rate = 0.1
 num_epochs = 1000
 image_size = 32
-batch_size = 128
+batch_size = 64
 epsilon = 1e-8 # used to avoid NAN loss
 generator_frequency = 1
 discriminator_frequency = 5
@@ -47,8 +47,10 @@ b2 = 0.999 # adam: decay of first order momentum of gradient
 
 model_path ='./TCGA_32_freq.tar'
 image_dir = 'tcga_images_32_freq'
+image_dir_fixed = 'tcga_images_32_freq_fixed'
 
 os.makedirs(image_dir, exist_ok=True)
+os.makedirs(image_dir_fixed, exist_ok=True)
 
 
 # In[33]:
@@ -69,7 +71,7 @@ class TCGADataset(Dataset):
 #         self.save_images()
         
     def _create_dataset(self, image_size, split):
-        data_dir = '/data1/prane/patch_data'
+        data_dir = '/mys3bucket/patch_data/'
         if self.split == 'train':
             data_dir = os.path.join(data_dir, 'train')
         else:
@@ -92,7 +94,6 @@ class TCGADataset(Dataset):
             
         images = np.concatenate(images)
         labels = np.concatenate(labels)
-        labels = np.asarray([1 if x in [330.0,331.0] else 0 for x in labels])
         
         return images, labels
     
@@ -339,6 +340,8 @@ if torch.cuda.is_available():
     bce_loss = bce_loss.cuda()
     cross_loss = cross_loss.cuda()
 
+print("Done with model initialization")
+
 
 # In[41]:
 
@@ -363,7 +366,14 @@ def plot_fake_data(data, grid_size = [5, 5]):
 # In[46]:
 
 
-def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
+def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon, mode):
+    
+    if mode == 'train':
+        generator.train()
+        discriminator.train()
+    else:
+        generator.eval()
+        discriminator.eval()
     
     # Generate Fake Image
     z = noise(b_size)
@@ -373,47 +383,54 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
     d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
     
-    optimizer_D.zero_grad()
-        
-    # Supervised Loss
-    supervised_loss = cross_loss(d_real_linear, label)
-#   d_class_loss_entropy = - torch.sum(label_onehot.float() * torch.log(d_real_prob), dim=1)
+    if mode == 'train':
+        optimizer_D.zero_grad()
 
-    masked_supervised_loss = torch.mul(label_mask, supervised_loss)
-    delim = torch.Tensor([1.0])
-    if torch.cuda.is_available():
-        delim = delim.cuda()
-    mask_sum = torch.max(delim, torch.sum(label_mask))
-    d_class_loss = torch.sum(label_mask * masked_supervised_loss) / mask_sum
+        # Supervised Loss
+        supervised_loss = cross_loss(d_real_linear, label)
+    #   d_class_loss_entropy = - torch.sum(label_onehot.float() * torch.log(d_real_prob), dim=1)
 
-    # Unsupervised (GAN) Loss
-    # data is real
-    prob_real_is_real = 1.0 - d_real_prob[:, -1] + epsilon
-    tmp_log = torch.log(prob_real_is_real)
-    d_real_loss = -1.0 * torch.mean(tmp_log)
+        masked_supervised_loss = torch.mul(label_mask, supervised_loss)
+        delim = torch.Tensor([1.0])
+        if torch.cuda.is_available():
+            delim = delim.cuda()
+        mask_sum = torch.max(delim, torch.sum(label_mask))
+        d_class_loss = torch.sum(label_mask * masked_supervised_loss) / mask_sum
 
-    # data is fake
-    prob_fake_is_fake = d_fake_prob[:, -1] + epsilon
-    tmp_log = torch.log(prob_fake_is_fake)
-    d_fake_loss = -1.0 * torch.mean(tmp_log)
+        # Unsupervised (GAN) Loss
+        # data is real
+        prob_real_is_real = 1.0 - d_real_prob[:, -1] + epsilon
+        tmp_log = torch.log(prob_real_is_real)
+        d_real_loss = -1.0 * torch.mean(tmp_log)
 
-    # loss and weight update
-    d_loss = d_class_loss + d_real_loss + d_fake_loss
-    d_loss.backward(retain_graph=True)
-    optimizer_D.step()
+        # data is fake
+        prob_fake_is_fake = d_fake_prob[:, -1] + epsilon
+        tmp_log = torch.log(prob_fake_is_fake)
+        d_fake_loss = -1.0 * torch.mean(tmp_log)
+
+        # loss and weight update
+        d_loss = d_class_loss + d_real_loss + d_fake_loss
+        d_loss.backward(retain_graph=True)
+        optimizer_D.step()
     
     # Accuracy
     _, predicted = torch.max(d_real_prob[:, :-1], dim=1)
     correct_batch = torch.sum(torch.eq(predicted, label))
     batch_accuracy = correct_batch.item()/float(b_size)
     
-    return d_loss, batch_accuracy
+    if mode == 'train':
+        return d_loss, batch_accuracy
+    else:
+        return batch_accuracy
 
 
 # In[47]:
 
 
 def train_generator(optimizer_G, b_size, epsilon):
+    
+    generator.train()
+    discriminator.train()
     
     # Generate Fake Image
     z = noise(b_size)
@@ -448,7 +465,7 @@ def train_generator(optimizer_G, b_size, epsilon):
 
 
 def save_checkpoint(state, model_type):
-    torch.save(state, model_type + '_checkpoint_32_freq.tar')
+    torch.save(state, model_type + '_32_freq.tar')
 
 
 # In[49]:
@@ -457,11 +474,12 @@ def save_checkpoint(state, model_type):
 '''
 Start Training
 '''
-generator.train()
-discriminator.train()
+# Fixed noise vector
+fixed_z = noise(batch_size)
 
 for epoch in range(num_epochs):
-    total_accuracy = 0
+    total_train_accuracy = 0
+    total_dev_accuracy = 0
     G_loss = 0
     D_loss = 0
     
@@ -474,16 +492,6 @@ for epoch in range(num_epochs):
             label = label.cuda()
             label_onehot = label_onehot.cuda()
             label_mask = label_mask.cuda()
-
-#         for j, im in enumerate(img):
-#             if torch.sum(im) == 0:
-#                 no = (batch_size * i) + j
-#                 print(no, label[j])
-#                 if label[j] not in substance_list:
-#                     substance_list.append(label[j])
-#                 im = im.detach().cpu().numpy()
-#                 im = Image.fromarray(im)
-#                 im.save('tcga_check/' + str(i) + '_' + str(j) + '.jpg', format='JPEG')
         
         b_size = img.size(0)
         
@@ -492,12 +500,12 @@ for epoch in range(num_epochs):
         batch_accuracy = 0
         
         for d_i in range(discriminator_frequency):
-            d_loss, d_accuracy = train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon)
+            d_loss, d_accuracy = train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon, 'train')
             batch_d_loss += d_loss.item()  
             batch_accuracy += d_accuracy
             
         batch_d_loss = batch_d_loss/float(discriminator_frequency)
-        batch_accuracy = batch_accuracy/float(discriminator_frequency)
+        train_batch_accuracy = batch_accuracy/float(discriminator_frequency)
         
         ################### Generator ####################
         batch_g_loss = 0
@@ -506,7 +514,7 @@ for epoch in range(num_epochs):
             batch_g_loss += g_loss.item()
         batch_g_loss = batch_g_loss/float(generator_frequency)
        
-        total_accuracy += batch_accuracy
+        total_train_accuracy += train_batch_accuracy
         D_loss += batch_d_loss
         G_loss += batch_g_loss
         
@@ -522,28 +530,36 @@ for epoch in range(num_epochs):
         'optimizer' : optimizer_G.state_dict(),
         }, 'gen')
         
+        # Discriminator on dev data
+        dev_accuracy = train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon, 'dev')
+        total_dev_accuracy += d_accuracy
+        
         if i%b_size == b_size-1:
-            print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %d%%] [G loss: %f]" % (epoch, num_epochs, i, 
-                                       len(train_loader), d_loss.item(), 100 * batch_accuracy, g_loss.item()))
+            print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, train acc: %d%%, dev acc: %d%%] [G loss: %f]" % (epoch, num_epochs,
+                          i, len(train_loader), d_loss.item(), 100 * train_batch_accuracy, 100* dev_accuracy, g_loss.item()))
 
         
     # Print Epoch results
-    total_accuracy = total_accuracy/float(i+1)
+    total_train_accuracy = total_train_accuracy/float(i+1)
+    total_dev_accuracy = total_dev_accuracy/float(i+1)
     avg_D_loss = D_loss/float(i+1)
     avg_G_loss = G_loss/float(i+1)
     
     print('--------------------------------------------------------------------')
-    print("===> [Epoch %d/%d] [Avg D loss: %f, avg acc: %d%%] [Avg G loss: %f]" % (epoch, num_epochs, 
-                                                        avg_D_loss, 100 * total_accuracy, avg_G_loss))
+    print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %d%%, avg dev acc: %d%%] [Avg G loss: %f]" % (epoch, num_epochs, 
+                                                  avg_D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, avg_G_loss))
     print('--------------------------------------------------------------------')
     
     # Save Images
-    save_image(fake_img[:36], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=6, normalize=True)
+    save_image(fake_img, image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=5, normalize=True)
+    # Save Fixed Images
+    fixed_fake_img = generator(fixed_z)
+    save_image(fixed_fake_img, image_dir_fixed + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
     
     # Tensorboard logging 
     
     # 1. Log scalar values (scalar summary)
-    info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'accuracy': total_accuracy }
+    info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch)
     
