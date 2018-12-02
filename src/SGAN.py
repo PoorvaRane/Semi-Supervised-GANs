@@ -53,7 +53,6 @@ parser.add_argument('--lrG', type=float, default=1e-5, help='generator learning 
 parser.add_argument('--b1', type=float, default=0.5, help='beta1 for Adam optimizer')
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 for Adam optimizer')
 parser.add_argument('--image_dir', type=str, default='tcga_images_32', help='directory to save images')
-parser.add_argument('--image_dir_fixed', type=str, default='tcga_images_32_fixed', help='directory to save fixed vector images')
 parser.add_argument('--model_path', type=str, default='_32.tar', help='directory to save images')
 args = parser.parse_args()
 
@@ -70,7 +69,7 @@ print('-------------- End ----------------')
 logger = Logger('./logs')
 
 os.makedirs(args.image_dir, exist_ok=True)
-os.makedirs(args.image_dir_fixed, exist_ok=True)
+os.makedirs(args.image_dir + '_fixed', exist_ok=True)
 
 
 # In[3]:
@@ -593,10 +592,10 @@ for epoch in range(args.num_epochs):
     print('--------------------------------------------------------------------')
     
     # Save Images
-    save_image(fake_img, image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+    save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
     # Save Fixed Images
     fixed_fake_img = generator(fixed_z)
-    save_image(fixed_fake_img, image_dir_fixed + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+    save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
     
     # Tensorboard logging 
     
