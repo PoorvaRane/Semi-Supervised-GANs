@@ -351,7 +351,6 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=args.lrD, betas=(a
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lrG, betas=(args.b1, args.b2))
 
 # Loss
-bce_loss = nn.BCEWithLogitsLoss()
 cross_loss = nn.CrossEntropyLoss(reduction='none')
 
 if torch.cuda.is_available():
@@ -359,7 +358,6 @@ if torch.cuda.is_available():
     generator = generator.cuda()
     discriminator = nn.DataParallel(discriminator)
     generator = nn.DataParallel(generator)
-    bce_loss = bce_loss.cuda()
     cross_loss = cross_loss.cuda()
 
 
