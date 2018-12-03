@@ -511,7 +511,7 @@ def train_generator(optimizer_G, b_size, epsilon):
 def save_checkpoint(state, is_best, model_type):
     torch.save(state, model_type + args.model_path)
     if is_best:
-        shutil.copyfile(model_type + args.model_path, model_type + 'best' +args.model_path)
+        shutil.copyfile(model_type + args.model_path, model_type + '_best' +args.model_path)
 
 
 # In[15]:
