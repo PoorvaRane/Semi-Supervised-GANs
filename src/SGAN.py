@@ -490,8 +490,10 @@ def train_generator(optimizer_G, b_size, epsilon):
 # In[14]:
 
 
-def save_checkpoint(state, model_type):
+def save_checkpoint(state, is_best, model_type):
     torch.save(state, model_type + args.model_path)
+    if is_best:
+        shutil.copyfile(model_type + args.model_path, model_type + 'best' +args.model_path)
 
 
 # In[15]:
@@ -542,25 +544,16 @@ for epoch in range(args.num_epochs):
        
         total_train_accuracy += train_batch_accuracy
         D_loss += batch_d_loss
-        G_loss += batch_g_loss
-        
-        # Save best model
-        save_checkpoint({
-        'epoch': epoch + 1,
-        'state_dict': discriminator.state_dict(),
-        'optimizer' : optimizer_D.state_dict(),
-        }, 'dis')
-        save_checkpoint({
-        'epoch': epoch + 1,
-        'state_dict': generator.state_dict(),
-        'optimizer' : optimizer_G.state_dict(),
-        }, 'gen')
-        
+        G_loss += batch_g_loss    
         
         if i%b_size == b_size-1:
             print("Train [Epoch %d/%d] [Batch %d/%d] [D loss: %f, train acc: %.3f%%] [G loss: %f]" % (epoch, args.num_epochs,
                           i, len(train_loader), d_loss.item(), 100 * train_batch_accuracy, g_loss.item()))
 
+    # Epoch statistics
+    total_train_accuracy = total_train_accuracy/float(i+1)
+    avg_D_loss = D_loss/float(i+1)
+    avg_G_loss = G_loss/float(i+1)
             
     # DEV LOADER
     generator.eval()
@@ -581,10 +574,20 @@ for epoch in range(args.num_epochs):
                           i, len(dev_loader), 100 * dev_accuracy))
         
     # Print Epoch results
-    total_train_accuracy = total_train_accuracy/float(i+1)
     total_dev_accuracy = total_dev_accuracy/float(i+1)
-    avg_D_loss = D_loss/float(i+1)
-    avg_G_loss = G_loss/float(i+1)
+
+    is_best = total_dev_accuracy >= total_train_accuracy
+    # Save best model
+    save_checkpoint({
+    'epoch': epoch + 1,
+    'state_dict': discriminator.state_dict(),
+    'optimizer' : optimizer_D.state_dict(),
+    }, 'dis')
+    save_checkpoint({
+    'epoch': epoch + 1,
+    'state_dict': generator.state_dict(),
+    'optimizer' : optimizer_G.state_dict(),
+    }, is_best, 'gen')
     
     print('--------------------------------------------------------------------')
     print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
