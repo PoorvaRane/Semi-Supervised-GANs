@@ -618,7 +618,7 @@ for epoch in range(args.num_epochs):
         logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
         
     # 3. Log generated images (image summary)
-    info = { image_dir : fake_img.view(-1, args.image_size, args.image_size)[:10].detach().cpu().numpy() }
+    info = { args.image_dir : fake_img.view(-1, args.image_size, args.image_size)[:10].detach().cpu().numpy() }
 
     for tag, images in info.items():
         logger.image_summary(tag, images, epoch)
