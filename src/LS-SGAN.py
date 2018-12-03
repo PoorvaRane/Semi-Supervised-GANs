@@ -606,7 +606,7 @@ for epoch in range(args.num_epochs):
     'epoch': epoch + 1,
     'state_dict': discriminator.state_dict(),
     'optimizer' : optimizer_D.state_dict(),
-    }, 'dis')
+    },is_best, 'dis')
     save_checkpoint({
     'epoch': epoch + 1,
     'state_dict': generator.state_dict(),

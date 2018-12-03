@@ -491,7 +491,7 @@ def train_generator(optimizer_G, b_size, epsilon):
 def save_checkpoint(state, is_best, model_type):
     torch.save(state, model_type + args.model_path)
     if is_best:
-        shutil.copyfile(model_type + args.model_path, model_type + 'best' +args.model_path)
+        shutil.copyfile(model_type + args.model_path, model_type + '_best_' +args.model_path)
 
 
 # In[15]:
@@ -580,7 +580,7 @@ for epoch in range(args.num_epochs):
     'epoch': epoch + 1,
     'state_dict': discriminator.state_dict(),
     'optimizer' : optimizer_D.state_dict(),
-    }, 'dis')
+    }, is_best, 'dis')
     save_checkpoint({
     'epoch': epoch + 1,
     'state_dict': generator.state_dict(),
