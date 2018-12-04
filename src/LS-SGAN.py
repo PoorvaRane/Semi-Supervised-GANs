@@ -432,7 +432,10 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     mask_sum = torch.max(delim, torch.sum(label_mask))
     d_class_loss = torch.sum(label_mask * masked_supervised_loss) / mask_sum
 
-    # Unsupervised (GAN) Loss
+    # Unsupervised (GAN) Loss - Least Squares GAN Loss
+    d_loss = 0.5 * (torch.mean((d_real_linear - 1)**2) +torch.mean(d_fake_linear**2))
+        
+    '''
     # data is real
     prob_real_is_real = 1.0 - d_real_prob[:, -1] + epsilon
     real_truth = real_data_groundtruth(b_size)
@@ -442,9 +445,9 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     prob_fake_is_fake = d_fake_prob[:, -1] + epsilon
     fake_truth = fake_data_groundtruth(b_size)
     d_fake_loss = mse_loss(prob_real_is_real, fake_truth.squeeze())
-
+    '''
     # loss and weight update
-    d_loss = d_class_loss + d_real_loss + d_fake_loss
+    d_loss = d_class_loss + d_loss
     d_loss.backward(retain_graph=True)
     optimizer_D.step()
     
@@ -491,11 +494,16 @@ def train_generator(optimizer_G, b_size, epsilon):
     d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img)
     
     optimizer_G.zero_grad()
-        
+    
+    #Least squares loss for generator
+    g_fake_loss = 0.5 * torch.mean((d_fake_linear - 1)**2)
+    
+    '''
     # fake data is mistaken to be real
     prob_fake_is_real = 1.0 - d_fake_prob[:, -1] + epsilon
     tmp_log =  torch.log(prob_fake_is_real)
     g_fake_loss = -1.0 * torch.mean(tmp_log)
+    '''
 
     # Feature Maching
     tmp1 = torch.mean(d_real_flatten, dim = 0)
