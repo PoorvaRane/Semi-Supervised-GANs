@@ -20,35 +20,56 @@ import random
 import os
 import shutil
 import pdb
-from logger import Logger
+import argparse
+#from logger import Logger
 from PIL import Image
 
 
 # In[2]:
 
 
-# Initialization
-num_channels = 3
-num_classes = 2
-latent_size = 100
-labeled_rate = 0.1
-num_epochs = 1000
-image_size = 64
-batch_size = 128
-epsilon = 1e-8 # used to avoid NAN loss
-generator_frequency = 1
-discriminator_frequency = 1
-logger = Logger('./logs')
+#logger = Logger('./logs')
 
-# Initialize parameters
-lr = 1e-5
-b1 = 0.5 # adam: decay of first order momentum of gradient
-b2 = 0.999 # adam: decay of first order momentum of gradient
+log_path = './SSL_TCGA_log.csv'
+model_path ='./TCGA_32.tar'
 
-model_path ='./TCGA_64.tar'
-image_dir = 'tcga_images_64'
 
-os.makedirs(image_dir, exist_ok=True)
+# In[3]:
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--num_channels', type=int, default=3, help='number of channels')
+parser.add_argument('--num_classes', type=int, default=2, help='number of classes')
+parser.add_argument('--latent_size', type=int, default=100, help='latent size for noise vector')
+parser.add_argument('--labeled_rate', type=float, default=0.1, help='ratio of labeled to unlabled samples')
+parser.add_argument('--batch_size', type=int, default=64, help='batch size')
+parser.add_argument('--num_epochs', type=int, default=500)
+parser.add_argument('--image_size', type=int, default=64)
+parser.add_argument('--epsilon', type=float, default=1e-8, help='epsilon')
+parser.add_argument('--generator_frequency', type=int, default=1, help='generator frequency')
+parser.add_argument('--discriminator_frequency', type=int, default=1, help='discriminator frequency')
+parser.add_argument('--lrD', type=float, default=1e-5, help='discriminator learning rate')
+parser.add_argument('--lrG', type=float, default=1e-5, help='generator learning rate')
+parser.add_argument('--b1', type=float, default=0.5, help='beta1 for Adam optimizer')
+parser.add_argument('--b2', type=float, default=0.999, help='beta2 for Adam optimizer')
+parser.add_argument('--image_dir', type=str, default='tcga_images_64', help='directory to save images')
+parser.add_argument('--model_path', type=str, default='_64.tar', help='directory to save images')
+args = parser.parse_args()
+
+# Print args
+print('------------ Options -------------')
+for k, v in sorted(vars(args).items()):
+    print('%s: %s' % (str(k), str(v)))
+print('-------------- End ----------------')
+
+
+# In[4]:
+
+
+#logger = Logger('./logs')
+
+os.makedirs(args.image_dir, exist_ok=True)
+os.makedirs(args.image_dir + '_fixed', exist_ok=True)
 
 
 # In[3]:
@@ -69,11 +90,8 @@ class TCGADataset(Dataset):
 #         self.save_images()
         
     def _create_dataset(self, image_size, split):
-        data_dir = '../dataset/patch_data'
-        if self.split == 'train':
-            data_dir = os.path.join(data_dir, 'train')
-        else:
-            data_dir = os.path.join(data_dir, 'dev')
+        data_dir = '/data1/prane/patch_data/'
+        data_dir = os.path.join(data_dir, self.split)
             
         all_files = os.listdir(data_dir)
         images = []
@@ -91,21 +109,21 @@ class TCGADataset(Dataset):
             labels.append(y)
             
         images = np.concatenate(images)
-        labels = np.concatenate(labels)  
+        labels = np.concatenate(labels)        
         return images, labels
     
     def save_images(self):
         images = self.patches
         folder = 'tcga_check/'
         os.makedirs(folder, exist_ok=True)
-        for i in range(batch_size):
+        for i in range(args.batch_size):
             image = images[i]
             im = Image.fromarray(image)
             im.save(folder + str(i) + '.jpg', format='JPEG')
         
     def _one_hot(self, y):
         label = y
-        label_onehot = np.zeros(num_classes + 1)
+        label_onehot = np.zeros(args.num_classes + 1)
         label_onehot[label] = 1
         return label_onehot
     
@@ -113,7 +131,7 @@ class TCGADataset(Dataset):
         if self.split == 'train':
             l = len(self.labels)
             label_mask = np.zeros(l)
-            masked_len = int(labeled_rate * l)
+            masked_len = int(args.labeled_rate * l)
             label_mask[0:masked_len] = 1
             np.random.shuffle(label_mask)
             label_mask = torch.LongTensor(label_mask)
@@ -124,7 +142,6 @@ class TCGADataset(Dataset):
 
     def __getitem__(self, idx):
         data, label = self.patches[idx], self.labels[idx]
-
         label_onehot = self._one_hot(label)
         if self.split == 'train':
             return self.transform(Image.fromarray(data)), label, label_onehot, self.label_mask[idx]
@@ -142,6 +159,7 @@ def get_loader(image_size, batch_size):
     #num_workers = 2
 
     tcga_train = TCGADataset(image_size=image_size, split='train')
+    tcga_dev = TCGADataset(image_size=image_size, split='dev')
 #     tcga_test = TCGADataset(image_size=image_size, split='test')
 
     train_loader = DataLoader(
@@ -151,6 +169,13 @@ def get_loader(image_size, batch_size):
         #num_workers=num_workers
     )
 
+    dev_loader = DataLoader(
+        dataset=tcga_dev,
+        batch_size=batch_size,
+        shuffle=True
+        #num_workers=num_workers
+    )
+    
 #     test_loader = DataLoader(
 #         dataset=tcga_test,
 #         batch_size=batch_size,
@@ -158,7 +183,7 @@ def get_loader(image_size, batch_size):
 #         #num_workers=num_workers
 #     )
 
-    return train_loader#, test_loader
+    return train_loader, dev_loader#, test_loader
 
 
 # In[5]:
@@ -209,7 +234,7 @@ class DiscriminatorNet(torch.nn.Module):
         # Conv operations
         # CNNBlock 1
         self.wn_conv1 = nn.Sequential(
-            weight_norm(nn.Conv2d(in_channels=num_channels, out_channels=filter1, kernel_size=3, stride=1, padding=1), name='weight'),
+            weight_norm(nn.Conv2d(in_channels=args.num_channels, out_channels=filter1, kernel_size=3, stride=1, padding=1), name='weight'),
             nn.LeakyReLU(0.2),
             weight_norm(nn.Conv2d(in_channels=filter1, out_channels=filter1, kernel_size=3, stride=1, padding=1), name='weight'),
             nn.LeakyReLU(0.2),
@@ -228,7 +253,7 @@ class DiscriminatorNet(torch.nn.Module):
             nn.LeakyReLU(0.2),
             nn.Dropout2d(dropout_rate)
         )
-        
+
         # CNNBlock 3
         self.wn_conv3 = nn.Sequential(
             weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=1, padding=1), name='weight'),
@@ -238,7 +263,7 @@ class DiscriminatorNet(torch.nn.Module):
             weight_norm(nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=2, padding=1), name='weight'),
             nn.LeakyReLU(0.2),
             nn.Dropout2d(dropout_rate)
-        )
+        )        
         
         # CNNBlock 4
         self.wn_conv4 = nn.Sequential(
@@ -251,7 +276,7 @@ class DiscriminatorNet(torch.nn.Module):
         )
                 
         # Linear 
-        self.wn_linear = weight_norm(nn.Linear(in_features=filter2, out_features=(num_classes + 1)), name='weight')
+        self.wn_linear = weight_norm(nn.Linear(in_features=filter2, out_features=(args.num_classes + 1)), name='weight')
         self.softmax = nn.Softmax(dim=1)
         self.apply(initializer)
         
@@ -278,7 +303,7 @@ class GeneratorNet(torch.nn.Module):
         super(GeneratorNet, self).__init__()
         
         self.linear1 = nn.Sequential(
-            nn.Linear(in_features=latent_size, out_features=4 * 4 * 512, bias=False),
+            nn.Linear(in_features=args.latent_size, out_features=4 * 4 * 512, bias=False),
             nn.BatchNorm1d(4 * 4 * 512),
             nn.ReLU()
             )
@@ -286,17 +311,17 @@ class GeneratorNet(torch.nn.Module):
         self.deconv1 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
             nn.BatchNorm2d(256),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         )
         self.deconv2 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
             nn.BatchNorm2d(128),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         )
         self.deconv3 = nn.Sequential(
             nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False),
             nn.BatchNorm2d(64),
-            nn.ReLU()
+            nn.ReLU(inplace=True)
         )
         self.wn_deconv4 = nn.Sequential(
             weight_norm(nn.ConvTranspose2d(in_channels=64, out_channels=3, kernel_size=5, stride=2, padding=2, output_padding=1),
@@ -337,11 +362,11 @@ discriminator = DiscriminatorNet()
 generator = GeneratorNet()
 
 # Data Loader
-train_loader = get_loader(image_size, batch_size)
+train_loader, dev_loader = get_loader(args.image_size, args.batch_size)
 
 # Optimizers
-optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
-optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(b1, b2))
+optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=args.lrD, betas=(args.b1, args.b2))
+optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lrG, betas=(args.b1, args.b2))
 
 # Loss
 bce_loss = nn.BCEWithLogitsLoss()
@@ -367,7 +392,7 @@ def plot_fake_data(data, grid_size = [5, 5]):
     size = grid_size[0] * grid_size[1]
     index = np.int_(np.random.uniform(0, data.shape[0], size = (size)))
 
-    figs = data[index].reshape(-1, image_size, image_size)
+    figs = data[index].reshape(-1, args.image_size, args.image_size)
 
     for idx, ax in enumerate(axes.flatten()):
         ax.axis('off')
@@ -393,7 +418,6 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
         
     # Supervised Loss
     supervised_loss = cross_loss(d_real_linear, label)
-#   d_class_loss_entropy = - torch.sum(label_onehot.float() * torch.log(d_real_prob), dim=1)
 
     masked_supervised_loss = torch.mul(label_mask, supervised_loss)
     delim = torch.Tensor([1.0])
@@ -424,6 +448,27 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
     batch_accuracy = correct_batch.item()/float(b_size)
     
     return d_loss, batch_accuracy
+
+
+# In[ ]:
+
+
+def test_discriminator(b_size, img, label):
+    
+    # Generate Fake Image
+    z = noise(b_size)
+    fake_img = generator(z)
+
+    # Discriminator outputs for real and fake
+    d_real_flatten, d_real_linear, d_real_prob = discriminator(img)
+    d_fake_flatten, d_fake_linear, d_fake_prob = discriminator(fake_img.detach())
+    
+    # Accuracy
+    _, predicted = torch.max(d_real_prob[:, :-1], dim=1)
+    correct_batch = torch.sum(torch.eq(predicted, label))
+    batch_accuracy = correct_batch.item()/float(b_size)
+    
+    return batch_accuracy
 
 
 # In[13]:
@@ -460,25 +505,30 @@ def train_generator(optimizer_G, b_size, epsilon):
     return g_loss, fake_img
 
 
-# In[ ]:
+# In[14]:
 
-def save_checkpoint(state, model_type):
-    torch.save(state, model_type + '_checkpoint_64.tar')
 
-        
-# In[ ]:
+def save_checkpoint(state, is_best, model_type):
+    torch.save(state, model_type + args.model_path)
+    if is_best:
+        shutil.copyfile(model_type + args.model_path, model_type + '_best' +args.model_path)
 
-'''
-Start Training
-'''
-generator.train()
-discriminator.train()
 
-for epoch in range(num_epochs):
-    total_accuracy = 0
+# In[15]:
+
+
+# Fixed noise vector
+fixed_z = noise(args.batch_size)
+
+for epoch in range(args.num_epochs):
+    total_train_accuracy = 0
+    total_dev_accuracy = 0
     G_loss = 0
     D_loss = 0
     
+    # TRAIN LOADER
+    generator.train()
+    discriminator.train()
     for i, data in enumerate(train_loader):
         
         img, label, label_onehot, label_mask = data
@@ -488,16 +538,6 @@ for epoch in range(num_epochs):
             label = label.cuda()
             label_onehot = label_onehot.cuda()
             label_mask = label_mask.cuda()
-
-#         for j, im in enumerate(img):
-#             if torch.sum(im) == 0:
-#                 no = (batch_size * i) + j
-#                 print(no, label[j])
-#                 if label[j] not in substance_list:
-#                     substance_list.append(label[j])
-#                 im = im.detach().cpu().numpy()
-#                 im = Image.fromarray(im)
-#                 im.save('tcga_check/' + str(i) + '_' + str(j) + '.jpg', format='JPEG')
         
         b_size = img.size(0)
         
@@ -505,83 +545,112 @@ for epoch in range(num_epochs):
         batch_d_loss = 0
         batch_accuracy = 0
         
-        for d_i in range(discriminator_frequency):
-            d_loss, d_accuracy = train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon)
+        for d_i in range(args.discriminator_frequency):
+            d_loss, d_accuracy = train_discriminator(optimizer_D, b_size, img, label, label_mask, args.epsilon)
             batch_d_loss += d_loss.item()  
             batch_accuracy += d_accuracy
             
-        batch_d_loss = batch_d_loss/float(discriminator_frequency)
-        batch_accuracy = batch_accuracy/float(discriminator_frequency)
+        batch_d_loss = batch_d_loss/float(args.discriminator_frequency)
+        train_batch_accuracy = batch_accuracy/float(args.discriminator_frequency)
         
         ################### Generator ####################
         batch_g_loss = 0
-        for g_i in range(generator_frequency):
-            g_loss, fake_img = train_generator(optimizer_G, b_size, epsilon)
+        for g_i in range(args.generator_frequency):
+            g_loss, fake_img = train_generator(optimizer_G, b_size, args.epsilon)
             batch_g_loss += g_loss.item()
-        batch_g_loss = batch_g_loss/float(generator_frequency)
+        batch_g_loss = batch_g_loss/float(args.generator_frequency)
        
-        total_accuracy += batch_accuracy
+        total_train_accuracy += train_batch_accuracy
         D_loss += batch_d_loss
-        G_loss += batch_g_loss
+        G_loss += batch_g_loss    
         
-        # Save best model
-        save_checkpoint({
-        'epoch': epoch + 1,
-        'state_dict': discriminator.state_dict(),
-        'optimizer' : optimizer_D.state_dict(),
-        }, 'dis')
-        save_checkpoint({
-        'epoch': epoch + 1,
-        'state_dict': generator.state_dict(),
-        'optimizer' : optimizer_G.state_dict(),
-        }, 'gen')
-        
+        '''
         if i%b_size == b_size-1:
-            print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %d%%] [G loss: %f]" % (epoch, num_epochs, i, 
-                                       len(train_loader), d_loss.item(), 100 * batch_accuracy, g_loss.item()))
+            print("Train [Epoch %d/%d] [Batch %d/%d] [D loss: %f, train acc: %.3f%%] [G loss: %f]" % (epoch, args.num_epochs,
+                          i, len(train_loader), d_loss.item(), 100 * train_batch_accuracy, g_loss.item()))
+        '''
 
-        
-    # Print Epoch results
-    total_accuracy = total_accuracy/float(i+1)
+    # Epoch statistics
+    total_train_accuracy = total_train_accuracy/float(i+1)
     avg_D_loss = D_loss/float(i+1)
     avg_G_loss = G_loss/float(i+1)
+            
+    # DEV LOADER
+    generator.eval()
+    discriminator.eval()
+    for i, data in enumerate(dev_loader):
+        
+        img, label = data
+        if torch.cuda.is_available():
+            img = img.cuda()
+            label = label.cuda()
+        
+        b_size = img.size(0)
+        dev_accuracy = test_discriminator(b_size, img, label)
+        total_dev_accuracy += d_accuracy
+        
+        '''
+        if i%b_size == b_size-1:
+            print("Dev [Epoch %d/%d] [Batch %d/%d] [D acc: %.3f%%]" % (epoch, args.num_epochs,
+                          i, len(dev_loader), 100 * dev_accuracy))
+        '''        
+
+    # Print Epoch results
+    total_dev_accuracy = total_dev_accuracy/float(i+1)
+
+    is_best = total_dev_accuracy >= total_train_accuracy
+    # Save best model
+    save_checkpoint({
+    'epoch': epoch + 1,
+    'state_dict': discriminator.state_dict(),
+    'optimizer' : optimizer_D.state_dict(),
+    }, is_best, 'dis')
+    save_checkpoint({
+    'epoch': epoch + 1,
+    'state_dict': generator.state_dict(),
+    'optimizer' : optimizer_G.state_dict(),
+    }, is_best, 'gen')
     
     print('--------------------------------------------------------------------')
-    print("===> [Epoch %d/%d] [Avg D loss: %f, avg acc: %d%%] [Avg G loss: %f]" % (epoch, num_epochs, 
-                                                        avg_D_loss, 100 * total_accuracy, avg_G_loss))
+    print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
+                                                  avg_D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, avg_G_loss))
     print('--------------------------------------------------------------------')
     
     # Save Images
-    save_image(fake_img[:36], image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=6, normalize=True)
+    save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+    # Save Fixed Images
+    fixed_fake_img = generator(fixed_z)
+    save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
     
-#     # Tensorboard logging 
+
+    '''
+    # Tensorboard logging 
     
-#     # 1. Log scalar values (scalar summary)
-#     info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'accuracy': total_accuracy }
-#     for tag, value in info.items():
-#         logger.scalar_summary(tag, value, epoch)
+    # 1. Log scalar values (scalar summary)
+    info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
+    for tag, value in info.items():
+        logger.scalar_summary(tag, value, epoch)
     
-#     # 2. Log values and gradients of the parameters (histogram summary)
-#     # Generator summary
-#     for tag, value in generator.named_parameters():
-#         tag = tag.replace('.', '/')
-#         logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
-#         logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
+    # 2. Log values and gradients of the parameters (histogram summary)
+    # Generator summary
+    for tag, value in generator.named_parameters():
+        tag = tag.replace('.', '/')
+        logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
+        logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
     
-#     #Discriminator summary
-#     for tag, value in discriminator.named_parameters():
-#         tag = tag.replace('.', '/')
-#         logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
-#         logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
+    #Discriminator summary
+    for tag, value in discriminator.named_parameters():
+        tag = tag.replace('.', '/')
+        logger.histo_summary(tag, value.detach().cpu().numpy(), epoch)
+        logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
         
-#     # 3. Log generated images (image summary)
-#     info = { image_dir : fake_img.view(-1, image_size, image_size)[:10].detach().cpu().numpy() }
+    # 3. Log generated images (image summary)
+    info = { args.image_dir : fake_img.view(-1, args.image_size, args.image_size)[:10].detach().cpu().numpy() }
 
-#     for tag, images in info.items():
-#         logger.image_summary(tag, images, epoch)
-        
+    for tag, images in info.items():
+        logger.image_summary(tag, images, epoch)
 
-
+    '''
 # In[ ]:
 
 
