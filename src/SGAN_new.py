@@ -563,7 +563,7 @@ def eval_module(dev_loader):
         
         b_size = img.size(0)
         dev_accuracy = test_discriminator(b_size, img, label)
-        total_dev_accuracy += d_accuracy
+        total_dev_accuracy += dev_accuracy
         
         if i%b_size == b_size-1:
             print("Dev [Epoch %d/%d] [Batch %d/%d] [D acc: %.3f%%]" % (epoch, args.num_epochs,
@@ -659,7 +659,6 @@ def testing_module():
     else:
         print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
 
-
     # Load the saved model for generator
     BEST_GENERATOR = 'gen32_lr.tar'
     if os.path.isfile(BEST_GENERATOR):
@@ -672,6 +671,21 @@ def testing_module():
     else:
         print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
 
+    '''
+    # Load the best model
+    BEST_MODEL = '32_lr.tar'
+    if os.path.isfile(BEST_MODEL):
+        print("=> loading dis checkpoint")
+        checkpoint = torch.load(BEST_MODEL)
+        discriminator.load_state_dict(checkpoint['dis_state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer_D'])
+        generator.load_state_dict(checkpoint['gen_state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer_G'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_MODEL, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_MODEL))
+    '''
 
     total_dev_accuracy = eval_module(dev_loader)
 
