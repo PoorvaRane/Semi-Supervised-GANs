@@ -555,6 +555,7 @@ def eval_module(dev_loader):
     discriminator.eval()
     total_dev_accuracy = 0
 
+    pdb.set_trace()
     for i, data in enumerate(dev_loader):
         
         img, label = data
@@ -689,7 +690,8 @@ if args.mode == 'train':
     main_module()
 else:
     # Test model performance on Dev/Test data
-    testing_module(dev_loader)
+    final_accuracy = testing_module(dev_loader)
+    print ("Accuracy on the Dev/Test data is = %f" %(final_accuracy))
 
 
 
