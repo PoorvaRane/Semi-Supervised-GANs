@@ -25,15 +25,6 @@ from logger import Logger
 from PIL import Image
 
 
-# In[2]:
-
-
-logger = Logger('./logs')
-
-log_path = './SSL_TCGA_log.csv'
-model_path ='./TCGA_32.tar'
-
-
 # In[3]:
 
 
@@ -681,6 +672,7 @@ def testing_module(eval_loader):
         print("=> no checkpoint found at '{}'".format(BEST_MODEL))
     '''
     total_dev_accuracy = eval_module(eval_loader)
+    return total_dev_accuracy
 
 
 # In[ ]:
