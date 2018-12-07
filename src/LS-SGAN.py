@@ -54,6 +54,7 @@ parser.add_argument('--b1', type=float, default=0.5, help='beta1 for Adam optimi
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 for Adam optimizer')
 parser.add_argument('--image_dir', type=str, default='tcga_images_32', help='directory to save images')
 parser.add_argument('--model_path', type=str, default='_32.tar', help='directory to save images')
+parser.add_argument('--mode', type=str, default='train', help='train or test the model')
 args = parser.parse_args()
 
 # Print args
@@ -434,18 +435,7 @@ def train_discriminator(optimizer_D, b_size, img, label, label_mask, epsilon):
 
     # Unsupervised (GAN) Loss - Least Squares GAN Loss
     d_loss = 0.5 * (torch.mean((d_real_linear - 1)**2) +torch.mean(d_fake_linear**2))
-        
-    '''
-    # data is real
-    prob_real_is_real = 1.0 - d_real_prob[:, -1] + epsilon
-    real_truth = real_data_groundtruth(b_size)
-    d_real_loss = mse_loss(prob_real_is_real, real_truth.squeeze())
-
-    # data is fake
-    prob_fake_is_fake = d_fake_prob[:, -1] + epsilon
-    fake_truth = fake_data_groundtruth(b_size)
-    d_fake_loss = mse_loss(prob_real_is_real, fake_truth.squeeze())
-    '''
+    
     # loss and weight update
     d_loss = d_class_loss + d_loss
     d_loss.backward(retain_graph=True)
@@ -497,13 +487,6 @@ def train_generator(optimizer_G, b_size, epsilon):
     
     #Least squares loss for generator
     g_fake_loss = 0.5 * torch.mean((d_fake_linear - 1)**2)
-    
-    '''
-    # fake data is mistaken to be real
-    prob_fake_is_real = 1.0 - d_fake_prob[:, -1] + epsilon
-    tmp_log =  torch.log(prob_fake_is_real)
-    g_fake_loss = -1.0 * torch.mean(tmp_log)
-    '''
 
     # Feature Maching
     tmp1 = torch.mean(d_real_flatten, dim = 0)
@@ -522,27 +505,21 @@ def train_generator(optimizer_G, b_size, epsilon):
 # In[14]:
 
 
-def save_checkpoint(state, is_best, model_type):
-    torch.save(state, model_type + args.model_path)
+def save_checkpoint(state, is_best):
+    torch.save(state, args.model_path)
     if is_best:
-        shutil.copyfile(model_type + args.model_path, model_type + 'best' +args.model_path)
+        shutil.copyfile(model_type + args.model_path, 'best_' +args.model_path)
 
 
 # In[15]:
 
-
-# Fixed noise vector
-fixed_z = noise(args.batch_size)
-
-for epoch in range(args.num_epochs):
-    total_train_accuracy = 0
-    total_dev_accuracy = 0
-    G_loss = 0
-    D_loss = 0
-    
-    # TRAIN LOADER
+ef training_module(epoch, train_loader):
     generator.train()
     discriminator.train()
+    total_train_accuracy = 0
+    G_loss = 0
+    D_loss = 0
+
     for i, data in enumerate(train_loader):
         
         img, label, label_onehot, label_mask = data
@@ -580,16 +557,22 @@ for epoch in range(args.num_epochs):
         
         if i%b_size == b_size-1:
             print("Train [Epoch %d/%d] [Batch %d/%d] [D loss: %f, train acc: %.3f%%] [G loss: %f]" % (epoch, args.num_epochs,
-                          i, len(train_loader), d_loss.item(), 100 * train_batch_accuracy, g_loss.item()))
+                          i, len(train_loader), batch_d_loss, 100 * train_batch_accuracy, batch_g_loss))
 
-    # Epoch statistics
+    # Epoch Stats
     total_train_accuracy = total_train_accuracy/float(i+1)
-    avg_D_loss = D_loss/float(i+1)
-    avg_G_loss = G_loss/float(i+1)
-            
-    # DEV LOADER
+    D_loss = D_loss/float(i+1)
+    G_loss = G_loss/float(i+1)
+
+    return total_train_accuracy, D_loss, G_loss, fake_img
+
+
+def eval_module(dev_loader):
     generator.eval()
     discriminator.eval()
+    total_dev_accuracy = 0
+
+    pdb.set_trace()
     for i, data in enumerate(dev_loader):
         
         img, label = data
@@ -599,43 +582,18 @@ for epoch in range(args.num_epochs):
         
         b_size = img.size(0)
         dev_accuracy = test_discriminator(b_size, img, label)
-        total_dev_accuracy += d_accuracy
+        total_dev_accuracy += dev_accuracy
         
-        if i%b_size == b_size-1:
-            print("Dev [Epoch %d/%d] [Batch %d/%d] [D acc: %.3f%%]" % (epoch, args.num_epochs,
-                          i, len(dev_loader), 100 * dev_accuracy))
-        
-    # Print Epoch results
+    # Epoch Stats
     total_dev_accuracy = total_dev_accuracy/float(i+1)
+    return total_dev_accuracy
 
-    is_best = total_dev_accuracy >= total_train_accuracy
-    # Save best model
-    save_checkpoint({
-    'epoch': epoch + 1,
-    'state_dict': discriminator.state_dict(),
-    'optimizer' : optimizer_D.state_dict(),
-    },is_best, 'dis')
-    save_checkpoint({
-    'epoch': epoch + 1,
-    'state_dict': generator.state_dict(),
-    'optimizer' : optimizer_G.state_dict(),
-    }, is_best, 'gen')
-    
-    print('--------------------------------------------------------------------')
-    print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
-                                                  avg_D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, avg_G_loss))
-    print('--------------------------------------------------------------------')
-    
-    # Save Images
-    save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
-    # Save Fixed Images
-    fixed_fake_img = generator(fixed_z)
-    save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
-    
-    # Tensorboard logging 
-    
+
+# In[15]:
+
+def tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img):
     # 1. Log scalar values (scalar summary)
-    info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
+    info = { 'Epoch': epoch, 'G_loss': G_loss, 'D_loss': D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch)
     
@@ -657,6 +615,106 @@ for epoch in range(args.num_epochs):
 
     for tag, images in info.items():
         logger.image_summary(tag, images, epoch)
+
+
+def main_module():
+    # Fixed noise vector
+    fixed_z = noise(args.batch_size)
+
+    for epoch in range(args.num_epochs):
+
+        # Training
+        total_train_accuracy, D_loss, G_loss, fake_img = training_module(train_loader)
+        # Evaluation 
+        total_dev_accuracy = eval_module(dev_loader)
+
+        # Save best model
+        is_best = total_dev_accuracy >= total_train_accuracy
+
+        save_checkpoint({
+        'epoch': epoch + 1,
+        'dis_state_dict': discriminator.state_dict(),
+        'optimizer_D' : optimizer_D.state_dict(),
+        'gen_state_dict': generator.state_dict(),
+        'optimizer_G' : optimizer_G.state_dict(),
+        }, is_best)
+        
+        print('--------------------------------------------------------------------')
+        print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
+                                                      D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, G_loss))
+        print('--------------------------------------------------------------------')
+        
+        # Save Images
+        save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        # Save Fixed Images
+        fixed_fake_img = generator(fixed_z)
+        save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        
+        # Tensorboard logging 
+        tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
+
+
+
+# In[ ]:
+
+def testing_module(eval_loader):
+
+    # Load the saved model for discriminator
+    BEST_DISCRIMINATOR = 'dis32_lr.tar'
+    if os.path.isfile(BEST_DISCRIMINATOR):
+        print("=> loading dis checkpoint")
+        checkpoint = torch.load(BEST_DISCRIMINATOR)
+        discriminator.load_state_dict(checkpoint['state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_DISCRIMINATOR, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
+
+    # Load the saved model for generator
+    BEST_GENERATOR = 'gen32_lr.tar'
+    if os.path.isfile(BEST_GENERATOR):
+        print("=> loading gen checkpoint")
+        checkpoint = torch.load(BEST_GENERATOR)
+        generator.load_state_dict(checkpoint['state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_GENERATOR, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
+
+    '''
+    # Load the best model
+    BEST_MODEL = '32_lr.tar'
+    if os.path.isfile(BEST_MODEL):
+        print("=> loading dis checkpoint")
+        checkpoint = torch.load(BEST_MODEL)
+        discriminator.load_state_dict(checkpoint['dis_state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer_D'])
+        generator.load_state_dict(checkpoint['gen_state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer_G'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_MODEL, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_MODEL))
+    '''
+    total_dev_accuracy = eval_module(eval_loader)
+    return total_dev_accuracy
+
+
+# In[ ]:
+
+if args.mode == 'train':
+    # Train a model and save the best one
+    main_module()
+else:
+    # Test model performance on Dev/Test data
+    final_accuracy = testing_module(dev_loader)
+    print ("Accuracy on the Dev/Test data is = %f" %(final_accuracy))
+
+
+
+# In[ ]:
 
 
 # In[ ]:
