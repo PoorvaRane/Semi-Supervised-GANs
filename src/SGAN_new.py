@@ -54,6 +54,7 @@ parser.add_argument('--b1', type=float, default=0.5, help='beta1 for Adam optimi
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 for Adam optimizer')
 parser.add_argument('--image_dir', type=str, default='tcga_images_32', help='directory to save images')
 parser.add_argument('--model_path', type=str, default='_32.tar', help='directory to save images')
+parser.add_argument('--mode', type=str, default='train', help='train or test the model')
 args = parser.parse_args()
 
 # Print args
@@ -635,13 +636,9 @@ def main_module():
         tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
 
 
-# Train a model and save the best one
-# main_module()
-
-
 # In[ ]:
 
-def testing_module():
+def testing_module(eval_loader):
 
     # Load the saved model for discriminator
     BEST_DISCRIMINATOR = 'dis32_lr.tar'
@@ -682,13 +679,17 @@ def testing_module():
     else:
         print("=> no checkpoint found at '{}'".format(BEST_MODEL))
     '''
-
-    total_dev_accuracy = eval_module(dev_loader)
+    total_dev_accuracy = eval_module(eval_loader)
 
 
 # In[ ]:
 
-testing_module()
+if args.mode == 'train':
+    # Train a model and save the best one
+    main_module()
+else:
+    # Test model performance on Dev/Test data
+    testing_module(dev_loader)
 
 
 
