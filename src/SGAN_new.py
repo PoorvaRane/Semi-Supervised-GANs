@@ -495,7 +495,7 @@ def save_checkpoint(state, is_best):
 
 
 
-def training_module(train_loader):
+def training_module(epoch, train_loader):
     generator.train()
     discriminator.train()
     total_train_accuracy = 0
@@ -564,10 +564,6 @@ def eval_module(dev_loader):
         b_size = img.size(0)
         dev_accuracy = test_discriminator(b_size, img, label)
         total_dev_accuracy += dev_accuracy
-        
-        if i%b_size == b_size-1:
-            print("Dev [Epoch %d/%d] [Batch %d/%d] [D acc: %.3f%%]" % (epoch, args.num_epochs,
-                          i, len(dev_loader), 100 * dev_accuracy))
         
     # Epoch Stats
     total_dev_accuracy = total_dev_accuracy/float(i+1)
