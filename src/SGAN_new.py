@@ -602,79 +602,83 @@ def tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_a
         logger.image_summary(tag, images, epoch)
 
 
-'''
-Main Module
-'''
-# Fixed noise vector
-fixed_z = noise(args.batch_size)
+def main_module():
+    # Fixed noise vector
+    fixed_z = noise(args.batch_size)
 
-for epoch in range(args.num_epochs):
+    for epoch in range(args.num_epochs):
 
-    # Training
-    total_train_accuracy, D_loss, G_loss, fake_img = training_module(train_loader)
-    # Evaluation 
+        # Training
+        total_train_accuracy, D_loss, G_loss, fake_img = training_module(train_loader)
+        # Evaluation 
+        total_dev_accuracy = eval_module(dev_loader)
+
+        # Save best model
+        is_best = total_dev_accuracy >= total_train_accuracy
+
+        save_checkpoint({
+        'epoch': epoch + 1,
+        'dis_state_dict': discriminator.state_dict(),
+        'optimizer_D' : optimizer_D.state_dict(),
+        'gen_state_dict': generator.state_dict(),
+        'optimizer_G' : optimizer_G.state_dict(),
+        }, is_best)
+        
+        print('--------------------------------------------------------------------')
+        print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
+                                                      D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, G_loss))
+        print('--------------------------------------------------------------------')
+        
+        # Save Images
+        save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        # Save Fixed Images
+        fixed_fake_img = generator(fixed_z)
+        save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        
+        # Tensorboard logging 
+        tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
+
+
+# Train a model and save the best one
+# main_module()
+
+
+# In[ ]:
+
+def testing_module():
+
+    # Load the saved model for discriminator
+    BEST_DISCRIMINATOR = 'dis32_lr.tar'
+    if os.path.isfile(BEST_DISCRIMINATOR):
+        print("=> loading dis checkpoint")
+        checkpoint = torch.load(BEST_DISCRIMINATOR)
+        discriminator.load_state_dict(checkpoint['state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_DISCRIMINATOR, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
+
+
+    # Load the saved model for generator
+    BEST_GENERATOR = 'gen32_lr.tar'
+    if os.path.isfile(BEST_GENERATOR):
+        print("=> loading gen checkpoint")
+        checkpoint = torch.load(BEST_GENERATOR)
+        generator.load_state_dict(checkpoint['state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_GENERATOR, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
+
+
     total_dev_accuracy = eval_module(dev_loader)
 
-    # Save best model
-    is_best = total_dev_accuracy >= total_train_accuracy
-
-    save_checkpoint({
-    'epoch': epoch + 1,
-    'dis_state_dict': discriminator.state_dict(),
-    'optimizer_D' : optimizer_D.state_dict(),
-    'gen_state_dict': generator.state_dict(),
-    'optimizer_G' : optimizer_G.state_dict(),
-    }, is_best)
-    
-    print('--------------------------------------------------------------------')
-    print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
-                                                  D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, G_loss))
-    print('--------------------------------------------------------------------')
-    
-    # Save Images
-    save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
-    # Save Fixed Images
-    fixed_fake_img = generator(fixed_z)
-    save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
-    
-    # Tensorboard logging 
-    tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
-
-
-# In[ ]:
-'''
-Testing Phase
-'''
-
-# Load the saved model for discriminator
-BEST_DISCRIMINATOR = 'dis32_lr.tar'
-if os.path.isfile(BEST_DISCRIMINATOR):
-    print("=> loading dis checkpoint")
-    checkpoint = torch.load(BEST_DISCRIMINATOR)
-    discriminator.load_state_dict(checkpoint['state_dict'])
-    optimizer_D.load_state_dict(checkpoint['optimizer'])
-    print("=> loaded checkpoint '{}' (epoch {})"
-          .format(BEST_DISCRIMINATOR, checkpoint['epoch']))
-else:
-    print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
-
-
-# Load the saved model for generator
-BEST_GENERATOR = 'gen32_lr.tar'
-if os.path.isfile(BEST_GENERATOR):
-    print("=> loading gen checkpoint")
-    checkpoint = torch.load(BEST_GENERATOR)
-    generator.load_state_dict(checkpoint['state_dict'])
-    optimizer_G.load_state_dict(checkpoint['optimizer'])
-    print("=> loaded checkpoint '{}' (epoch {})"
-          .format(BEST_GENERATOR, checkpoint['epoch']))
-else:
-    print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
-
 
 # In[ ]:
 
-total_dev_accuracy = eval_module(dev_loader)
+testing_module()
 
 
 
