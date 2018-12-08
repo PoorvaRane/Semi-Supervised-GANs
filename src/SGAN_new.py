@@ -79,12 +79,34 @@ class TCGADataset(Dataset):
             transforms.ToTensor(),
             transforms.Normalize((.5, .5, .5), (.5, .5, .5))
         ])
-#         self.save_images()
         
+    def balance_data(self, images, labels):
+        cancer = np.count_nonzero(labels)
+        noncancer = (labels.shape[0] - cancer)
+        minimum = min(cancer, noncancer)
+        sample_idxs_cancer = random.sample(list(np.where(labels == 1)[0]), minimum)
+        sample_idxs_nocancer = random.sample(list(np.where(labels == 0)[0]), minimum)
+        new_idxs = []
+        new_idxs.extend(sample_idxs_cancer)
+        new_idxs.extend(sample_idxs_nocancer)
+        random.shuffle(new_idxs)
+        images = images[new_idxs]
+        labels = labels[new_idxs]
+        
+        # Print data statistics
+        print("Total number of patches : ",labels.shape[0])
+        print("Cancerous patches : ", sample_idxs_cancer.shape[0])
+        print("Non cancerous patches : ", sample_idxs_nocancer.shape[0])
+        
+        return images, labels
+    
     def _create_dataset(self, image_size, split):
         data_dir = '/mys3bucket/patch_data'
-        data_dir = os.path.join(data_dir, self.split)
-            
+        if self.split == 'train':
+            data_dir = os.path.join(data_dir, 'train')
+        else:
+            data_dir = os.path.join(data_dir, 'dev')
+        
         all_files = os.listdir(data_dir)
         images = []
         labels = []
@@ -98,10 +120,13 @@ class TCGADataset(Dataset):
             X = data['arr_0']
             y = data['arr_1']
             images.append(X)
-            labels.append(y)
+            labels.append(y)                
             
         images = np.concatenate(images)
-        labels = np.concatenate(labels)        
+        labels = np.concatenate(labels) 
+        
+        #balance data
+        images, labels = self.balance_data(images, labels)            
         return images, labels
     
     def save_images(self):
@@ -546,7 +571,6 @@ def eval_module(dev_loader):
     discriminator.eval()
     total_dev_accuracy = 0
 
-    pdb.set_trace()
     for i, data in enumerate(dev_loader):
         
         img, label = data
@@ -633,7 +657,7 @@ def main_module():
 def testing_module(eval_loader):
 
     # Load the saved model for discriminator
-    BEST_DISCRIMINATOR = 'dis32_lr.tar'
+    BEST_DISCRIMINATOR = 'dis_best__32_label.tar'
     if os.path.isfile(BEST_DISCRIMINATOR):
         print("=> loading dis checkpoint")
         checkpoint = torch.load(BEST_DISCRIMINATOR)
@@ -645,7 +669,7 @@ def testing_module(eval_loader):
         print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
 
     # Load the saved model for generator
-    BEST_GENERATOR = 'gen32_lr.tar'
+    BEST_GENERATOR = 'gen_best__32_label.tar'
     if os.path.isfile(BEST_GENERATOR):
         print("=> loading gen checkpoint")
         checkpoint = torch.load(BEST_GENERATOR)
