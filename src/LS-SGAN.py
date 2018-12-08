@@ -25,15 +25,6 @@ from logger import Logger
 from PIL import Image
 
 
-# In[2]:
-
-
-logger = Logger('./logs')
-
-log_path = './SSL_TCGA_log.csv'
-model_path ='./TCGA_32.tar'
-
-
 # In[3]:
 
 
@@ -52,8 +43,7 @@ parser.add_argument('--lrD', type=float, default=1e-5, help='discriminator learn
 parser.add_argument('--lrG', type=float, default=1e-5, help='generator learning rate')
 parser.add_argument('--b1', type=float, default=0.5, help='beta1 for Adam optimizer')
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 for Adam optimizer')
-parser.add_argument('--image_dir', type=str, default='tcga_images_32', help='directory to save images')
-parser.add_argument('--model_path', type=str, default='_32.tar', help='directory to save images')
+parser.add_argument('--param', type=str, default='32', help='parameter setting')
 parser.add_argument('--mode', type=str, default='train', help='train or test the model')
 args = parser.parse_args()
 
@@ -68,33 +58,12 @@ print('-------------- End ----------------')
 
 
 logger = Logger('./logs')
+image_dir = 'images_' + args.param
+graph_dir = 'result_graphs'
 
-os.makedirs(args.image_dir, exist_ok=True)
-os.makedirs(args.image_dir + '_fixed', exist_ok=True)
-
-
-# In[ ]:
-
-
-# Defining ground-truth for real and fake images
-
-def real_data_groundtruth(size):
-    '''
-    Tensor containing ones, with shape = size
-    '''
-    data = Variable(torch.ones(size, 1))
-    if torch.cuda.is_available(): 
-        return data.cuda()
-    return data
-
-def fake_data_groundtruth(size):
-    '''
-    Tensor containing zeros, with shape = size
-    '''
-    data = Variable(torch.zeros(size, 1))
-    if torch.cuda.is_available(): 
-        return data.cuda()
-    return data
+os.makedirs(image_dir, exist_ok=True)
+os.makedirs(image_dir + '_fixed', exist_ok=True)
+os.makedirs(graph_dir, exist_ok=True)
 
 
 # In[3]:
@@ -163,14 +132,6 @@ class TCGADataset(Dataset):
             
         return images, labels
     
-    def save_images(self):
-        images = self.patches
-        folder = 'tcga_check/'
-        os.makedirs(folder, exist_ok=True)
-        for i in range(args.batch_size):
-            image = images[i]
-            im = Image.fromarray(image)
-            im.save(folder + str(i) + '.jpg', format='JPEG')
         
     def _one_hot(self, y):
         label = y
@@ -532,9 +493,9 @@ def train_generator(optimizer_G, b_size, epsilon):
 
 
 def save_checkpoint(state, is_best):
-    torch.save(state, args.model_path)
+    torch.save(state, args.param + '.tar')
     if is_best:
-        shutil.copyfile(model_type + args.model_path, 'best_' +args.model_path)
+        shutil.copyfile(model_type + args.param + '.tar', 'best_' + args.param + '.tar')
 
 
 # In[15]:
@@ -642,6 +603,22 @@ def tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_a
         logger.image_summary(tag, images, epoch)
 
 
+def plot_graph(epoch, train, dev, mode):
+    epoch_list = np.arange(epoch + 1)
+    plt.plot(epoch_list, train)
+    plt.plot(epoch_list, dev)
+    
+    if mode.lower() == 'accuracy':
+        location = 'lower right'
+    else:
+        location = 'upper right'
+
+    plt.legend(['Train ' +  mode, 'Dev ' + mode], loc=location)
+    plt.xlabel('Epochs')
+    plt_image_path = os.path.join(graph_dir, args.param + '_' + mode.lower()[:4] + '_epoch_' + str(epoch))
+    plt.savefig(plt_image_path) 
+
+        
 def main_module():
     # Fixed noise vector
     fixed_z = noise(args.batch_size)
@@ -670,45 +647,23 @@ def main_module():
         print('--------------------------------------------------------------------')
         
         # Save Images
-        save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        save_image(fake_img, image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
         # Save Fixed Images
         fixed_fake_img = generator(fixed_z)
-        save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
         
         # Tensorboard logging 
         tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
 
-
+        # Plot Accuracy Graph
+        train_acc_list.append(total_train_accuracy)
+        dev_acc_list.append(total_dev_accuracy)
+        plot_graph(epoch, train_acc_list, dev_acc_list, 'Accuracy')
 
 # In[ ]:
 
 def testing_module(eval_loader):
-
-    # Load the saved model for discriminator
-    BEST_DISCRIMINATOR = 'disbest32_lr_lsgan.tar'
-    if os.path.isfile(BEST_DISCRIMINATOR):
-        print("=> loading dis checkpoint")
-        checkpoint = torch.load(BEST_DISCRIMINATOR)
-        discriminator.load_state_dict(checkpoint['state_dict'])
-        optimizer_D.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-              .format(BEST_DISCRIMINATOR, checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
-
-    # Load the saved model for generator
-    BEST_GENERATOR = 'genbest32_lr_lsgan.tar'
-    if os.path.isfile(BEST_GENERATOR):
-        print("=> loading gen checkpoint")
-        checkpoint = torch.load(BEST_GENERATOR)
-        generator.load_state_dict(checkpoint['state_dict'])
-        optimizer_G.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-              .format(BEST_GENERATOR, checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
-
-    '''
+    
     # Load the best model
     BEST_MODEL = '32_lr.tar'
     if os.path.isfile(BEST_MODEL):
@@ -722,7 +677,7 @@ def testing_module(eval_loader):
               .format(BEST_MODEL, checkpoint['epoch']))
     else:
         print("=> no checkpoint found at '{}'".format(BEST_MODEL))
-    '''
+    
     total_dev_accuracy = eval_module(eval_loader)
     return total_dev_accuracy
 

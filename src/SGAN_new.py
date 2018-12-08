@@ -671,31 +671,6 @@ def main_module():
 
 def testing_module(eval_loader):
 
-    # Load the saved model for discriminator
-    BEST_DISCRIMINATOR = 'dis_best__32_label.tar'
-    if os.path.isfile(BEST_DISCRIMINATOR):
-        print("=> loading dis checkpoint")
-        checkpoint = torch.load(BEST_DISCRIMINATOR)
-        discriminator.load_state_dict(checkpoint['state_dict'])
-        optimizer_D.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-              .format(BEST_DISCRIMINATOR, checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
-
-    # Load the saved model for generator
-    BEST_GENERATOR = 'gen_best__32_label.tar'
-    if os.path.isfile(BEST_GENERATOR):
-        print("=> loading gen checkpoint")
-        checkpoint = torch.load(BEST_GENERATOR)
-        generator.load_state_dict(checkpoint['state_dict'])
-        optimizer_G.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-              .format(BEST_GENERATOR, checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
-
-    '''
     # Load the best model
     BEST_MODEL = '32_lr.tar'
     if os.path.isfile(BEST_MODEL):
@@ -709,7 +684,7 @@ def testing_module(eval_loader):
               .format(BEST_MODEL, checkpoint['epoch']))
     else:
         print("=> no checkpoint found at '{}'".format(BEST_MODEL))
-    '''
+   
     total_dev_accuracy = eval_module(eval_loader)
     return total_dev_accuracy
 
