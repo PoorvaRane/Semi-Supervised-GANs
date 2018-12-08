@@ -98,6 +98,7 @@ class TCGADataset(Dataset):
         print("Total number of patches : ",labels.shape[0])
         print("Cancerous patches : ", len(sample_idxs_cancer))
         print("Non cancerous patches : ", len(sample_idxs_nocancer))
+        print("-------------------------------------------------")
         
         return images, labels
     
@@ -463,7 +464,7 @@ def test_discriminator(b_size, img, label):
 # In[13]:
 
 
-def train_generator(optimizer_G, b_size, epsilon):
+def train_generator(img, optimizer_G, b_size, epsilon):
     
     # Generate Fake Image
     z = noise(b_size)
@@ -538,7 +539,7 @@ def training_module(epoch, train_loader):
         ################### Generator ####################
         batch_g_loss = 0
         for g_i in range(args.generator_frequency):
-            g_loss, fake_img = train_generator(optimizer_G, b_size, args.epsilon)
+            g_loss, fake_img = train_generator(img, optimizer_G, b_size, args.epsilon)
             batch_g_loss += g_loss.item()
         batch_g_loss = batch_g_loss/float(args.generator_frequency)
        
@@ -632,7 +633,7 @@ def main_module():
     for epoch in range(args.num_epochs):
 
         # Training
-        total_train_accuracy, D_loss, G_loss, fake_img = training_module(train_loader)
+        total_train_accuracy, D_loss, G_loss, fake_img = training_module(epoch, train_loader)
         # Evaluation 
         total_dev_accuracy = eval_module(dev_loader)
 
