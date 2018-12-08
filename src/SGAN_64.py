@@ -21,17 +21,8 @@ import os
 import shutil
 import pdb
 import argparse
-#from logger import Logger
+from logger import Logger
 from PIL import Image
-
-
-# In[2]:
-
-
-#logger = Logger('./logs')
-
-log_path = './SSL_TCGA_log.csv'
-model_path ='./TCGA_32.tar'
 
 
 # In[3]:
@@ -52,8 +43,8 @@ parser.add_argument('--lrD', type=float, default=1e-5, help='discriminator learn
 parser.add_argument('--lrG', type=float, default=1e-5, help='generator learning rate')
 parser.add_argument('--b1', type=float, default=0.5, help='beta1 for Adam optimizer')
 parser.add_argument('--b2', type=float, default=0.999, help='beta2 for Adam optimizer')
-parser.add_argument('--image_dir', type=str, default='tcga_images_64', help='directory to save images')
-parser.add_argument('--model_path', type=str, default='_64.tar', help='directory to save images')
+parser.add_argument('--param', type=str, default='64', help='parameter setting')
+parser.add_argument('--mode', type=str, default='train', help='train or test the model')
 args = parser.parse_args()
 
 # Print args
@@ -66,11 +57,13 @@ print('-------------- End ----------------')
 # In[4]:
 
 
-#logger = Logger('./logs')
+logger = Logger('./logs')
+image_dir = 'images_' + args.param
+graph_dir = 'result_graphs'
 
-os.makedirs(args.image_dir, exist_ok=True)
-os.makedirs(args.image_dir + '_fixed', exist_ok=True)
-
+os.makedirs(image_dir, exist_ok=True)
+os.makedirs(image_dir + '_fixed', exist_ok=True)
+os.makedirs(graph_dir, exist_ok=True)
 
 # In[3]:
 
@@ -87,12 +80,35 @@ class TCGADataset(Dataset):
             transforms.ToTensor(),
             transforms.Normalize((.5, .5, .5), (.5, .5, .5))
         ])
-#         self.save_images()
         
+    def balance_data(self, images, labels):
+        cancer = np.count_nonzero(labels)
+        noncancer = (labels.shape[0] - cancer)
+        minimum = min(cancer, noncancer)
+        sample_idxs_cancer = random.sample(list(np.where(labels == 1)[0]), minimum)
+        sample_idxs_nocancer = random.sample(list(np.where(labels == 0)[0]), minimum)
+        new_idxs = []
+        new_idxs.extend(sample_idxs_cancer)
+        new_idxs.extend(sample_idxs_nocancer)
+        random.shuffle(new_idxs)
+        images = images[new_idxs]
+        labels = labels[new_idxs]
+        
+        # Print data statistics
+        print("Total number of patches : ",labels.shape[0])
+        print("Cancerous patches : ", len(sample_idxs_cancer))
+        print("Non cancerous patches : ", len(sample_idxs_nocancer))
+        print("-------------------------------------------------")
+        
+        return images, labels
+    
     def _create_dataset(self, image_size, split):
-        data_dir = '/data1/prane/patch_data/'
-        data_dir = os.path.join(data_dir, self.split)
-            
+        data_dir = '/mys3bucket/patch_data'
+        if self.split == 'train':
+            data_dir = os.path.join(data_dir, 'train')
+        else:
+            data_dir = os.path.join(data_dir, 'dev')
+        
         all_files = os.listdir(data_dir)
         images = []
         labels = []
@@ -106,20 +122,14 @@ class TCGADataset(Dataset):
             X = data['arr_0']
             y = data['arr_1']
             images.append(X)
-            labels.append(y)
+            labels.append(y)                
             
         images = np.concatenate(images)
-        labels = np.concatenate(labels)        
+        labels = np.concatenate(labels) 
+        
+        #balance data
+        images, labels = self.balance_data(images, labels)            
         return images, labels
-    
-    def save_images(self):
-        images = self.patches
-        folder = 'tcga_check/'
-        os.makedirs(folder, exist_ok=True)
-        for i in range(args.batch_size):
-            image = images[i]
-            im = Image.fromarray(image)
-            im.save(folder + str(i) + '.jpg', format='JPEG')
         
     def _one_hot(self, y):
         label = y
@@ -369,7 +379,6 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=args.lrD, betas=(a
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=args.lrG, betas=(args.b1, args.b2))
 
 # Loss
-bce_loss = nn.BCEWithLogitsLoss()
 cross_loss = nn.CrossEntropyLoss(reduction='none')
 
 if torch.cuda.is_available():
@@ -377,7 +386,6 @@ if torch.cuda.is_available():
     generator = generator.cuda()
     discriminator = nn.DataParallel(discriminator)
     generator = nn.DataParallel(generator)
-    bce_loss = bce_loss.cuda()
     cross_loss = cross_loss.cuda()
 
 
@@ -474,7 +482,7 @@ def test_discriminator(b_size, img, label):
 # In[13]:
 
 
-def train_generator(optimizer_G, b_size, epsilon):
+def train_generator(img, optimizer_G, b_size, epsilon):
     
     # Generate Fake Image
     z = noise(b_size)
@@ -508,27 +516,20 @@ def train_generator(optimizer_G, b_size, epsilon):
 # In[14]:
 
 
-def save_checkpoint(state, is_best, model_type):
-    torch.save(state, model_type + args.model_path)
+def save_checkpoint(state, is_best):
+    torch.save(state, args.param + '.tar')
     if is_best:
-        shutil.copyfile(model_type + args.model_path, model_type + '_best' +args.model_path)
+        shutil.copyfile(model_type + args.param + '.tar', 'best_' + args.param + '.tar')
 
 
-# In[15]:
 
-
-# Fixed noise vector
-fixed_z = noise(args.batch_size)
-
-for epoch in range(args.num_epochs):
-    total_train_accuracy = 0
-    total_dev_accuracy = 0
-    G_loss = 0
-    D_loss = 0
-    
-    # TRAIN LOADER
+def training_module(epoch, train_loader):
     generator.train()
     discriminator.train()
+    total_train_accuracy = 0
+    G_loss = 0
+    D_loss = 0
+
     for i, data in enumerate(train_loader):
         
         img, label, label_onehot, label_mask = data
@@ -556,7 +557,7 @@ for epoch in range(args.num_epochs):
         ################### Generator ####################
         batch_g_loss = 0
         for g_i in range(args.generator_frequency):
-            g_loss, fake_img = train_generator(optimizer_G, b_size, args.epsilon)
+            g_loss, fake_img = train_generator(img, optimizer_G, b_size, args.epsilon)
             batch_g_loss += g_loss.item()
         batch_g_loss = batch_g_loss/float(args.generator_frequency)
        
@@ -564,20 +565,23 @@ for epoch in range(args.num_epochs):
         D_loss += batch_d_loss
         G_loss += batch_g_loss    
         
-        '''
         if i%b_size == b_size-1:
             print("Train [Epoch %d/%d] [Batch %d/%d] [D loss: %f, train acc: %.3f%%] [G loss: %f]" % (epoch, args.num_epochs,
-                          i, len(train_loader), d_loss.item(), 100 * train_batch_accuracy, g_loss.item()))
-        '''
+                          i, len(train_loader), batch_d_loss, 100 * train_batch_accuracy, batch_g_loss))
 
-    # Epoch statistics
+    # Epoch Stats
     total_train_accuracy = total_train_accuracy/float(i+1)
-    avg_D_loss = D_loss/float(i+1)
-    avg_G_loss = G_loss/float(i+1)
-            
-    # DEV LOADER
+    D_loss = D_loss/float(i+1)
+    G_loss = G_loss/float(i+1)
+
+    return total_train_accuracy, D_loss, G_loss, fake_img
+
+
+def eval_module(dev_loader):
     generator.eval()
     discriminator.eval()
+    total_dev_accuracy = 0
+
     for i, data in enumerate(dev_loader):
         
         img, label = data
@@ -587,47 +591,18 @@ for epoch in range(args.num_epochs):
         
         b_size = img.size(0)
         dev_accuracy = test_discriminator(b_size, img, label)
-        total_dev_accuracy += d_accuracy
+        total_dev_accuracy += dev_accuracy
         
-        '''
-        if i%b_size == b_size-1:
-            print("Dev [Epoch %d/%d] [Batch %d/%d] [D acc: %.3f%%]" % (epoch, args.num_epochs,
-                          i, len(dev_loader), 100 * dev_accuracy))
-        '''        
-
-    # Print Epoch results
+    # Epoch Stats
     total_dev_accuracy = total_dev_accuracy/float(i+1)
+    return total_dev_accuracy
 
-    is_best = total_dev_accuracy >= total_train_accuracy
-    # Save best model
-    save_checkpoint({
-    'epoch': epoch + 1,
-    'state_dict': discriminator.state_dict(),
-    'optimizer' : optimizer_D.state_dict(),
-    }, is_best, 'dis')
-    save_checkpoint({
-    'epoch': epoch + 1,
-    'state_dict': generator.state_dict(),
-    'optimizer' : optimizer_G.state_dict(),
-    }, is_best, 'gen')
-    
-    print('--------------------------------------------------------------------')
-    print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
-                                                  avg_D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, avg_G_loss))
-    print('--------------------------------------------------------------------')
-    
-    # Save Images
-    save_image(fake_img, args.image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
-    # Save Fixed Images
-    fixed_fake_img = generator(fixed_z)
-    save_image(fixed_fake_img, args.image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
-    
 
-    '''
-    # Tensorboard logging 
-    
+# In[15]:
+
+def tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img):
     # 1. Log scalar values (scalar summary)
-    info = { 'Epoch': epoch, 'G_loss': avg_G_loss, 'D_loss': avg_D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
+    info = { 'Epoch': epoch, 'G_loss': G_loss, 'D_loss': D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
     for tag, value in info.items():
         logger.scalar_summary(tag, value, epoch)
     
@@ -649,17 +624,124 @@ for epoch in range(args.num_epochs):
 
     for tag, images in info.items():
         logger.image_summary(tag, images, epoch)
+        
+
+def plot_graph(epoch, train, dev, mode):
+    epoch_list = np.arange(epoch + 1)
+    plt.plot(epoch_list, train)
+    plt.plot(epoch_list, dev)
+    
+    if mode.lower() == 'accuracy':
+        location = 'lower right'
+    else:
+        location = 'upper right'
+
+    plt.legend(['Train ' +  mode, 'Dev ' + mode], loc=location)
+    plt.xlabel('Epochs')
+    plt_image_path = os.path.join(graph_dir, args.param + '_' + mode.lower()[:4] + '_epoch_' + str(epoch))
+    plt.savefig(plt_image_path)
+
+
+def main_module():
+    # Fixed noise vector
+    fixed_z = noise(args.batch_size)
+    train_acc_list = []
+    dev_acc_list = []
+
+    for epoch in range(args.num_epochs):
+
+        # Training
+        total_train_accuracy, D_loss, G_loss, fake_img = training_module(epoch, train_loader)
+        # Evaluation 
+        total_dev_accuracy = eval_module(dev_loader)
+
+        # Save best model
+        is_best = total_dev_accuracy >= total_train_accuracy
+
+        save_checkpoint({
+        'epoch': epoch + 1,
+        'dis_state_dict': discriminator.state_dict(),
+        'optimizer_D' : optimizer_D.state_dict(),
+        'gen_state_dict': generator.state_dict(),
+        'optimizer_G' : optimizer_G.state_dict(),
+        }, is_best)
+        
+        print('--------------------------------------------------------------------')
+        print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
+                                                      D_loss, 100 * total_train_accuracy, 100* total_dev_accuracy, G_loss))
+        print('--------------------------------------------------------------------')
+        
+        # Save Images
+        save_image(fake_img, image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        # Save Fixed Images
+        fixed_fake_img = generator(fixed_z)
+        save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        
+        # Tensorboard logging 
+        tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
+        
+        # Plot Accuracy Graph
+        train_acc_list.append(total_train_accuracy)
+        dev_acc_list.append(total_dev_accuracy)
+        plot_graph(epoch, train_acc_list, dev_acc_list, 'Accuracy')
+
+
+# In[ ]:
+
+def testing_module(eval_loader):
+
+    # Load the saved model for discriminator
+    BEST_DISCRIMINATOR = 'dis_64_lr.tar'
+    if os.path.isfile(BEST_DISCRIMINATOR):
+        print("=> loading dis checkpoint")
+        checkpoint = torch.load(BEST_DISCRIMINATOR)
+        discriminator.load_state_dict(checkpoint['state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_DISCRIMINATOR, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_DISCRIMINATOR))
+     # Load the saved model for generator
+    BEST_GENERATOR = 'gen_64_lr.tar'
+    if os.path.isfile(BEST_GENERATOR):
+        print("=> loading gen checkpoint")
+        checkpoint = torch.load(BEST_GENERATOR)
+        generator.load_state_dict(checkpoint['state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_GENERATOR, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_GENERATOR))
 
     '''
+    # Load the best model
+    BEST_MODEL = '64_lr.tar'
+    if os.path.isfile(BEST_MODEL):
+        print("=> loading dis checkpoint")
+        checkpoint = torch.load(BEST_MODEL)
+        discriminator.load_state_dict(checkpoint['dis_state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer_D'])
+        generator.load_state_dict(checkpoint['gen_state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer_G'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(BEST_MODEL, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(BEST_MODEL))
+    '''
+   
+    total_dev_accuracy = eval_module(eval_loader)
+    return total_dev_accuracy
+
+
 # In[ ]:
 
-
-
-
-
-# In[ ]:
-
-
+if args.mode == 'train':
+    # Train a model and save the best one
+    main_module()
+else:
+    # Test model performance on Dev/Test data
+    final_accuracy = testing_module(dev_loader)
+    print ("Accuracy on the Dev/Test data is = %f" %(final_accuracy))
 
 
 
