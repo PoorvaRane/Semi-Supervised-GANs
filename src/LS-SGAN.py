@@ -128,8 +128,8 @@ class TCGADataset(Dataset):
         
         # Print data statistics
         print("Total number of patches : ",labels.shape[0])
-        print("Cancerous patches : ", sample_idxs_cancer.shape[0])
-        print("Non cancerous patches : ", sample_idxs_nocancer.shape[0])
+        print("Cancerous patches : ", len(sample_idxs_cancer))
+        print("Non cancerous patches : ", len(sample_idxs_nocancer))
         
         return images, labels
     
