@@ -90,7 +90,7 @@ class TCGADataset(Dataset):
 #         self.save_images()
         
     def _create_dataset(self, image_size, split):
-        data_dir = '/data1/prane/patch_data/'
+        data_dir = '/mys3bucket/patch_data/'
         data_dir = os.path.join(data_dir, self.split)
             
         all_files = os.listdir(data_dir)
@@ -574,7 +574,7 @@ for epoch in range(args.num_epochs):
     total_train_accuracy = total_train_accuracy/float(i+1)
     avg_D_loss = D_loss/float(i+1)
     avg_G_loss = G_loss/float(i+1)
-            
+    pdb.set_trace()
     # DEV LOADER
     generator.eval()
     discriminator.eval()
