@@ -496,7 +496,7 @@ def train_generator(img, optimizer_G, b_size, epsilon):
 def save_checkpoint(state, is_best):
     torch.save(state, args.param + '.tar')
     if is_best:
-        shutil.copyfile(model_type + args.param + '.tar', 'best_' + args.param + '.tar')
+        shutil.copyfile(args.param + '.tar', 'best_' + args.param + '.tar')
 
 
 # In[15]:
@@ -648,10 +648,10 @@ def main_module():
         print('--------------------------------------------------------------------')
         
         # Save Images
-        save_image(fake_img, image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        save_image(fake_img, image_dir + '/epoch_%d.png' % (epoch), nrow=8, normalize=True)
         # Save Fixed Images
         fixed_fake_img = generator(fixed_z)
-        save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d.png' % (epoch, i), nrow=8, normalize=True)
         
         # Tensorboard logging 
         tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
