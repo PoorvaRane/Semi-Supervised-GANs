@@ -273,7 +273,7 @@ def eval_module(dev_loader):
         
 def main_module():
     # Fixed noise vector
-    fixed_z = noise(64)
+    fixed_z = utils.noise(64)
     train_acc_list = []
     dev_acc_list = []
 
