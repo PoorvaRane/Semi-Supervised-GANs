@@ -31,7 +31,7 @@ from PIL import Image
 num_channels = 3
 num_classes = 1
 num_epochs = 300
-image_size = 64
+image_size = 32
 batch_size = 64
 epsilon = 1e-8 # used to avoid NAN loss
 logger = Logger('./logs')
@@ -41,7 +41,7 @@ lr = 1e-5
 b1 = 0.5 # adam: decay of first order momentum of gradient
 b2 = 0.999 # adam: decay of first order momentum of gradient
 
-model_path ='./baseline_64.tar'
+model_path ='./baseline_comp.tar'
 graph_dir = './result_graphs'
 
 # In[3]:
@@ -229,21 +229,6 @@ class Model(torch.nn.Module):
             #nn.LeakyReLU(0.2)
             
         )
-
-        # CNNBlock 4
-        self.conv4 = nn.Sequential(
-            nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(filter2),
-            nn.LeakyReLU(0.2)
-
-            #nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=1, stride=1, padding=0),
-            #nn.BatchNorm2d(filter2),
-            #nn.LeakyReLU(0.2),
-            #nn.Conv2d(in_channels=filter2, out_channels=filter2, kernel_size=1, stride=1, padding=0),
-            #nn.BatchNorm2d(filter2),
-            #nn.LeakyReLU(0.2)
-
-        )
                 
         # Linear 
         self.linear = nn.Sequential(
@@ -256,8 +241,7 @@ class Model(torch.nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
-        x = self.conv4(x)
-
+        
         # Linear
         x = x.mean(dim=3).mean(dim=2)
         x = self.linear(x)
@@ -400,7 +384,7 @@ def plot_graph(epoch, train, dev, mode):
 
     plt.legend(['Train ' +  mode, 'Dev ' + mode], loc=location)
     plt.xlabel('Epochs')
-    plt_image_path = os.path.join(graph_dir, 'Baseline_64' + mode.lower()[:4] + '_epoch_' + str(epoch))
+    plt_image_path = os.path.join(graph_dir, 'Baseline_32' + mode.lower()[:4] + '_epoch_' + str(epoch))
     plt.savefig(plt_image_path)
 
 
