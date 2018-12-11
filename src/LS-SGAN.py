@@ -21,7 +21,7 @@ import os
 import shutil
 import pdb
 import argparse
-from logger import Logger
+# from logger import Logger
 from PIL import Image
 
 
@@ -57,13 +57,14 @@ print('-------------- End ----------------')
 # In[4]:
 
 
-logger = Logger('./logs')
+# logger = Logger('./logs')
 image_dir = 'images_' + args.param
 graph_dir = 'result_graphs'
 
 os.makedirs(image_dir, exist_ok=True)
 os.makedirs(image_dir + '_fixed', exist_ok=True)
 os.makedirs(graph_dir, exist_ok=True)
+os.makedirs(os.path.join(graph_dir, args.param), exist_ok=True)
 
 
 # In[3]:
@@ -104,7 +105,7 @@ class TCGADataset(Dataset):
         return images, labels
     
     def _create_dataset(self, image_size, split):
-        data_dir = '/mys3bucket/patch_data'
+        data_dir = '/data1/prane/patch_data'
         if self.split == 'train':
             data_dir = os.path.join(data_dir, 'train')
         else:
@@ -496,7 +497,7 @@ def train_generator(img, optimizer_G, b_size, epsilon):
 def save_checkpoint(state, is_best):
     torch.save(state, args.param + '.tar')
     if is_best:
-        shutil.copyfile(model_type + args.param + '.tar', 'best_' + args.param + '.tar')
+        shutil.copyfile(args.param + '.tar', 'best_' + args.param + '.tar')
 
 
 # In[15]:
@@ -543,7 +544,8 @@ def training_module(epoch, train_loader):
         D_loss += batch_d_loss
         G_loss += batch_g_loss    
         
-        if i%b_size == b_size-1:
+#         if i%b_size == b_size-1:
+        if i%500 == 499:
             print("Train [Epoch %d/%d] [Batch %d/%d] [D loss: %f, train acc: %.3f%%] [G loss: %f]" % (epoch, args.num_epochs,
                           i, len(train_loader), batch_d_loss, 100 * train_batch_accuracy, batch_g_loss))
 
@@ -622,7 +624,9 @@ def plot_graph(epoch, train, dev, mode):
         
 def main_module():
     # Fixed noise vector
-    fixed_z = noise(args.batch_size)
+    fixed_z = noise(64)
+    train_acc_list = []
+    dev_acc_list = []
 
     for epoch in range(args.num_epochs):
 
@@ -648,13 +652,13 @@ def main_module():
         print('--------------------------------------------------------------------')
         
         # Save Images
-        save_image(fake_img, image_dir + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        save_image(fake_img, image_dir + '/epoch_%d.png' % (epoch), nrow=8, normalize=True)
         # Save Fixed Images
         fixed_fake_img = generator(fixed_z)
-        save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d_batch_%d.png' % (epoch, i), nrow=8, normalize=True)
+        save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d.png' % (epoch), nrow=8, normalize=True)
         
         # Tensorboard logging 
-        tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
+#         tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
 
         # Plot Accuracy Graph
         train_acc_list.append(total_train_accuracy)
