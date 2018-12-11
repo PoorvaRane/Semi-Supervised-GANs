@@ -23,7 +23,7 @@ import pdb
 import argparse
 import models
 import utils
-from logger import Logger
+# from logger import Logger
 from PIL import Image
 
 
@@ -59,7 +59,7 @@ print('-------------- End ----------------')
 # In[4]:
 
 
-logger = Logger('./logs')
+# logger = Logger('./logs')
 image_dir = 'images_' + args.param
 graph_dir = 'result_graphs'
 
@@ -72,11 +72,15 @@ os.makedirs(graph_dir, exist_ok=True)
 
 
 # Models
-discriminator = models.DiscriminatorNet()
-generator = models.GeneratorNet()
+if args.image_size == 32:
+    discriminator = models.DiscriminatorNet(args)
+    generator = models.GeneratorNet(args)
+else:
+    discriminator = models.DiscriminatorNet_64(args)
+    generator = models.GeneratorNet_64(args)
 
 # Data Loader
-train_loader, dev_loader = utils.get_loader(args.image_size, args.batch_size)
+train_loader, dev_loader = utils.get_loader(args)
 
 # Optimizers
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=args.lrD, betas=(args.b1, args.b2))
@@ -298,7 +302,7 @@ def main_module():
         'optimizer_G' : optimizer_G.state_dict(),
         'dev_accuracy' : total_dev_accuracy,
         'train_accuracy' : total_train_accuracy,
-        }, is_best)
+        }, args, is_best)
         
         print('--------------------------------------------------------------------')
         print("===> [Epoch %d/%d] [Avg D loss: %f, avg train acc: %.3f%%, avg dev acc: %.3f%%] [Avg G loss: %f]" % (epoch, args.num_epochs, 
@@ -312,7 +316,7 @@ def main_module():
         save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d.png' % (epoch), nrow=8, normalize=True)
         
         # Tensorboard logging 
-        utils.tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
+#         utils.tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
         
         # Plot Accuracy Graph
         train_acc_list.append(total_train_accuracy)

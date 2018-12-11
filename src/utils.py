@@ -15,14 +15,15 @@ import os
 import shutil
 import pdb
 import argparse
-from logger import Logger
+# from logger import Logger
 from PIL import Image
 
 
 # Create Dataset
 class TCGADataset(Dataset):
-    def __init__(self, image_size, split):
+    def __init__(self, args, image_size, split):
         self.split = split
+        self.args = args
         self.tcga_dataset = self._create_dataset(image_size, split)
         self.patches, self.labels = self.tcga_dataset
         self.label_mask = self._create_label_mask()
@@ -54,7 +55,7 @@ class TCGADataset(Dataset):
         return images, labels
     
     def _create_dataset(self, image_size, split):
-        data_dir = '/mys3bucket/patch_data'
+        data_dir = '/data1/prane/patch_data'
         if self.split == 'train':
             data_dir = os.path.join(data_dir, 'train')
         else:
@@ -84,7 +85,7 @@ class TCGADataset(Dataset):
         
     def _one_hot(self, y):
         label = y
-        label_onehot = np.zeros(args.num_classes + 1)
+        label_onehot = np.zeros(self.args.num_classes + 1)
         label_onehot[label] = 1
         return label_onehot
     
@@ -92,7 +93,7 @@ class TCGADataset(Dataset):
         if self.split == 'train':
             l = len(self.labels)
             label_mask = np.zeros(l)
-            masked_len = int(args.labeled_rate * l)
+            masked_len = int(self.args.labeled_rate * l)
             label_mask[0:masked_len] = 1
             np.random.shuffle(label_mask)
             label_mask = torch.LongTensor(label_mask)
@@ -113,23 +114,23 @@ class TCGADataset(Dataset):
 
 
 # Get dataloaders
-def get_loader(image_size, batch_size):
+def get_loader(args):
     #num_workers = 2
 
-    tcga_train = TCGADataset(image_size=image_size, split='train')
-    tcga_dev = TCGADataset(image_size=image_size, split='dev')
+    tcga_train = TCGADataset(args, image_size=args.image_size, split='train')
+    tcga_dev = TCGADataset(args, image_size=args.image_size, split='dev')
 #     tcga_test = TCGADataset(image_size=image_size, split='test')
 
     train_loader = DataLoader(
         dataset=tcga_train,
-        batch_size=batch_size,
+        batch_size=args.batch_size,
         shuffle=True
         #num_workers=num_workers
     )
 
     dev_loader = DataLoader(
         dataset=tcga_dev,
-        batch_size=batch_size,
+        batch_size=args.batch_size,
         shuffle=True
         #num_workers=num_workers
     )
@@ -151,7 +152,7 @@ def noise(size):
     return n
 
 
-def save_checkpoint(state, is_best):
+def save_checkpoint(state, args, is_best):
     torch.save(state, args.param + '.tar')
     if is_best:
         shutil.copyfile(args.param + '.tar', 'best_' + args.param + '.tar')

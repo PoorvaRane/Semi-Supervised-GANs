@@ -29,7 +29,7 @@ class GaussianNoise(torch.nn.Module):
 
 
 class DiscriminatorNet(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(DiscriminatorNet, self).__init__()
           
         dropout_rate = 0.5
@@ -97,7 +97,7 @@ class DiscriminatorNet(torch.nn.Module):
 
 
 class GeneratorNet(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, args):
         super(GeneratorNet, self).__init__()
         
         self.linear1 = nn.Sequential(
@@ -138,8 +138,8 @@ class GeneratorNet(torch.nn.Module):
 
 # For 64x64 image data
 class DiscriminatorNet_64(torch.nn.Module):
-    def __init__(self):
-        super(DiscriminatorNet, self).__init__()
+    def __init__(self, args):
+        super(DiscriminatorNet_64, self).__init__()
           
         dropout_rate = 0.5
         filter1 = 96
@@ -218,8 +218,8 @@ class DiscriminatorNet_64(torch.nn.Module):
 
 
 class GeneratorNet_64(torch.nn.Module):
-    def __init__(self):
-        super(GeneratorNet, self).__init__()
+    def __init__(self, args):
+        super(GeneratorNet_64, self).__init__()
         
         self.linear1 = nn.Sequential(
             nn.Linear(in_features=args.latent_size, out_features=4 * 4 * 512, bias=False),
