@@ -19,6 +19,9 @@ import argparse
 from PIL import Image
 
 
+graph_dir = 'result_graphs'
+
+
 # Create Dataset
 class TCGADataset(Dataset):
     def __init__(self, args, image_size, split):
@@ -55,7 +58,7 @@ class TCGADataset(Dataset):
         return images, labels
     
     def _create_dataset(self, image_size, split):
-        data_dir = '/data1/prane/patch_data'
+        data_dir = '/mys3bucket/patch_data'
         if self.split == 'train':
             data_dir = os.path.join(data_dir, 'train')
         else:
@@ -80,7 +83,7 @@ class TCGADataset(Dataset):
         labels = np.concatenate(labels) 
         
         #balance data
-        images, labels = self.balance_data(images, labels)            
+        #images, labels = self.balance_data(images, labels)            
         return images, labels
         
     def _one_hot(self, y):
@@ -124,14 +127,16 @@ def get_loader(args):
     train_loader = DataLoader(
         dataset=tcga_train,
         batch_size=args.batch_size,
-        shuffle=True
+        shuffle=True,
+        drop_last=True
         #num_workers=num_workers
     )
 
     dev_loader = DataLoader(
         dataset=tcga_dev,
         batch_size=args.batch_size,
-        shuffle=True
+        shuffle=True,
+        drop_last=True
         #num_workers=num_workers
     )
     
@@ -158,7 +163,9 @@ def save_checkpoint(state, args, is_best):
         shutil.copyfile(args.param + '.tar', 'best_' + args.param + '.tar')
 
 
-def tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img):
+def tensorboard_logging(args, epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img):
+    image_dir = 'images_' + args.param
+
     # 1. Log scalar values (scalar summary)
     info = { 'Epoch': epoch, 'G_loss': G_loss, 'D_loss': D_loss, 'train_accuracy': total_train_accuracy, 'dev_accuracy': total_dev_accuracy }
     for tag, value in info.items():
@@ -178,14 +185,14 @@ def tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_a
         logger.histo_summary(tag+'/grad', value.grad.detach().cpu().numpy(), epoch)
         
     # 3. Log generated images (image summary)
-    info = { args.image_dir : fake_img.view(-1, args.image_size, args.image_size)[:10].detach().cpu().numpy() }
+    info = { image_dir : fake_img.view(-1, args.image_size, args.image_size)[:10].detach().cpu().numpy() }
 
     for tag, images in info.items():
         logger.image_summary(tag, images, epoch)
 
 
 
-def plot_graph(epoch, train, dev, mode):
+def plot_graph(args, epoch, train, dev, mode):
     epoch_list = np.arange(epoch + 1)
     plt.plot(epoch_list, train)
     plt.plot(epoch_list, dev)

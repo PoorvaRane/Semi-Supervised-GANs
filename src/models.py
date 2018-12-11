@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.init import xavier_uniform_
 from torch.nn.utils import weight_norm
+import pdb
 
 
 def initializer(m):
@@ -32,7 +33,7 @@ class DiscriminatorNet(torch.nn.Module):
     def __init__(self, args):
         super(DiscriminatorNet, self).__init__()
           
-        dropout_rate = 0.5
+        dropout_rate = 0.45
         filter1 = 96
         filter2 = 192
         
@@ -124,7 +125,6 @@ class GeneratorNet(torch.nn.Module):
         self.apply(initializer)
         
     def forward(self, x):
-        
         x = self.linear1(x)
         x = x.view(-1, 512, 4, 4)
         

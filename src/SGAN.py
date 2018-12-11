@@ -316,12 +316,12 @@ def main_module():
         save_image(fixed_fake_img, image_dir + '_fixed' + '/epoch_%d.png' % (epoch), nrow=8, normalize=True)
         
         # Tensorboard logging 
-#         utils.tensorboard_logging(epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
+#         utils.tensorboard_logging(args, epoch, G_loss, D_loss, total_train_accuracy, total_dev_accuracy, fake_img)
         
         # Plot Accuracy Graph
         train_acc_list.append(total_train_accuracy)
         dev_acc_list.append(total_dev_accuracy)
-        utils.plot_graph(epoch, train_acc_list, dev_acc_list, 'Accuracy')
+        utils.plot_graph(args, epoch, train_acc_list, dev_acc_list, 'Accuracy')
 
 
 # In[ ]:
